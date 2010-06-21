@@ -1,4 +1,10 @@
 *.pyc
 *.swp
+*.a
+*.dylib
+*.la
+*.o
+*.libs/
 thumbs.db
+*bin/
 */**/build
