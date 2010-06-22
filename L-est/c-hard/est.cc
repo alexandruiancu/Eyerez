@@ -2,6 +2,11 @@
 #include <gmp.h>
 #include <gmpxx.h>
 #include <csv_parser/csv_parser.hpp>
+#include <gsl/gsl_randist.h>
+
+
+
+
 
 int main(void) {
   csv_parser file_parser;
@@ -19,6 +24,6 @@ int main(void) {
 
     row_count++;
   }      
-
+  cout << gsl_ran_gaussian_pdf(0, 1) << '\n';
   cout << row_count << '\n';
 }
