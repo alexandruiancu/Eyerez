@@ -133,11 +133,26 @@ prior_suite(void) {
   return s;
 }
 
+Suite *
+data_suite(void) {
+  Suite *s = suite_create("data methods");
+
+  TCase *tc_core = tcase_create("Core");
+  tcase_add_test(tc_core, test_countlines);
+  tcase_add_test(tc_core, test_readObservations);
+  tcase_add_test(tc_core, test_toFromRealSpace);
+  tcase_add_test(tc_core, test_logLik);
+  suite_add_tcase (s, tc_core);
+
+  return s;
+}
+
 int 
 main (void) {
   int number_failed;
-  Suite *s = prior_suite ();
-  SRunner *sr = srunner_create (s);
+  SRunner *sr = srunner_create( prior_suite() );
+  srunner_add_suite( sr, data_suite() );
+
   srunner_run_all(sr, CK_NORMAL);
   number_failed = srunner_ntests_failed(sr);
   srunner_free(sr);
