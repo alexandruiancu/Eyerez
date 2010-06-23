@@ -1,15 +1,61 @@
 #include "problem.h"
+#include "data.h"
 
 #include <math.h>
 #include <gsl/gsl_permutation.h>
 #include <gsl/gsl_linalg.h>
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_vector.h>
+#include <gsl/gsl_blas.h>
 #include <gsl/gsl_randist.h>
 
 double 
-logLik(gsl_matrix * data, double L, gsl_vector c, gsl_matrix * A) {
-  // TO IMPLEMENT
+logLik(const obsmat os, 
+       const double L, 
+       const gsl_vector *c, 
+       const gsl_matrix *A, 
+       const double sdError) 
+{
+  obsmat oscpy = gsl_matrix_alloc(os->size1, os->size2);
+  gsl_matrix_memcpy(oscpy, os);
+  toRealSpace(oscpy, L, 1);
+  size_t N = os->size2;
+  size_t i;
+  double logL = 0;
+
+  for (i = 0; i < N; i++) {
+    gsl_vector *o = gsl_vector_alloc(3);
+    gsl_vector_const_view view = gsl_matrix_const_column(oscpy, i);
+    gsl_vector_memcpy(o, &(&view)->vector);
+    
+    double d = computeDistance(o, c, A);
+    d = log(gsl_ran_gaussian_pdf(d, sdError));
+    
+    logL += d;
+  }
+
+  gsl_matrix_free(oscpy);
+  return logL;
+}
+
+double
+computeDistance(const gsl_vector *ob, const gsl_vector *c, const gsl_matrix *A) {
+  gsl_vector *obcpy = gsl_vector_alloc(3);
+  gsl_vector *half = gsl_vector_alloc(3);
+
+  gsl_vector_memcpy(obcpy, ob);
+  gsl_vector_add(obcpy, c);
+
+  // put Ax in half
+  gsl_blas_dsymv(CblasUpper, 1.0, A, obcpy, 0.0, half);
+  
+  double dist;
+  gsl_blas_ddot(obcpy, half, &dist);
+
+  gsl_vector_free(obcpy);
+  gsl_vector_free(half);
+  
+  return (dist - 1.0);
 }
 
 double
@@ -33,7 +79,7 @@ ellLogPrior(double ell, double muEll, double sdEll) {
 
 
 double
-trace(gsl_matrix * X, int n) {
+trace(gsl_matrix * X, size_t n) {
   double tr = 0;
   size_t i;
   for (i = 0; i < n; i++) {
@@ -80,4 +126,5 @@ shiftLogPrior(gsl_vector * shift, double sdShift) {
   }
   
   logL -= log(sdShift);
+  return logL;
 }

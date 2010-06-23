@@ -11,13 +11,16 @@ all: est
 est: est.cc problem libs
 	${CPPC} ${FLAGS} ${LIBS} ${LD} -o ${BUILDDIR}/est est.cc
 
-problem: problem.c
-	${CC} ${FLAGS} -c -o ${BUILDDIR}/problem.o problem.c
+problem: problem.c data
+	${CPPC} ${FLAGS} ${LIBS} -c -o ${BUILDDIR}/problem.o problem.c ${BUILDDIR}/data.o
+
+data: data.cc
+	${CPPC} ${FLAGS} ${LIBS} -c -o ${BUILDDIR}/data.o data.cc
 
 check: test
 
-test: problem
-	${CC} ${FLAGS} -g ${LIBS} -lcheck ${LD} -o ${BUILDDIR}/test test/test.c problem.c
+test: problem data
+	${CPPC} ${FLAGS} -g ${LIBS} -lcheck ${LD} -o ${BUILDDIR}/test test/test.c problem.c ${BUILDDIR}/data.o
 	${BUILDDIR}/test
 
 
