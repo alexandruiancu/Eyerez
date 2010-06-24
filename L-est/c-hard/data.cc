@@ -30,8 +30,10 @@ allocObsCSV(FILE *f) {
     csv_row row = file_parser.get_row();
     
     for (unsigned int j = 0; j < row.size(); j++) {
-      gsl_matrix_set(os, i, j, atof(row[j].c_str()));
+      gsl_matrix_set(os, j, i, atof(row[j].c_str()));
     }
+
+    i++;
   }
 
   return os;
@@ -60,11 +62,24 @@ void
 toRealSpace(obsmat os, double L, int sign) {
   size_t N = os->size2;
   size_t i;
-  double hole;
 
+  double x, y, r, th;
   for (i = 0; i < N; i++) {
-    hole = gsl_matrix_get(os, 0, i);
-    gsl_matrix_set(os, 0, i, L - hole);
+    // Read the current observation
+    x = gsl_matrix_get(os, 0, i);
+    y = gsl_matrix_get(os, 1, i);
+
+    // Convert to polar coordinates and apply the L
+    r = L - sqrt(pow(x, 2) + pow(y, 2));
+    th = atan2(y, x);
+
+    // Return to rectangular coordinates
+    x = r * cos(th);
+    y = r * sin(th);
+
+    // Store it in the matrix again
+    gsl_matrix_set(os, 0, i, x);
+    gsl_matrix_set(os, 1, i, y);
   }
 }
 
@@ -72,10 +87,23 @@ void
 toLaserSpace(obsmat os, double L, int sign) {
   size_t N = os->size2;
   size_t i;
-  double hole;
 
+  double x, y, r, th;
   for (i = 0; i < N; i++) {
-    hole = gsl_matrix_get(os, 0, i);
-    gsl_matrix_set(os, 0, i, L - hole);
-  }  
+    // Read the current observation
+    x = gsl_matrix_get(os, 0, i);
+    y = gsl_matrix_get(os, 1, i);
+
+    // Convert to polar coordinates and apply the L
+    r = L - sqrt(pow(x, 2) + pow(y, 2));
+    th = atan2(y, x);
+
+    // Return to rectangular coordinates
+    x = r * cos(th);
+    y = r * sin(th);
+
+    // Store it in the matrix again
+    gsl_matrix_set(os, 0, i, x);
+    gsl_matrix_set(os, 1, i, y);
+  }
 }

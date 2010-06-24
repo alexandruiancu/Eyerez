@@ -6,8 +6,17 @@
 #include <gsl/gsl_randist.h>
 
 double 
+logPost(const obsmat os, 
+        const double ell,
+        const double sdEll,
+        const gsl_vector *c,
+        const double sdShift,
+        const gsl_matrix *A, 
+        const double sdError);
+
+double 
 logLik(const obsmat os, 
-       const double L, 
+       const double ell, 
        const gsl_vector *c, 
        const gsl_matrix *A, 
        const double sdError);
@@ -16,13 +25,13 @@ double
 computeDistance(const gsl_vector *ob, const gsl_vector *c, const gsl_matrix *A);
 
 double 
-ellLogPrior(double ell, double muEll, double sdEll);
+ellLogPrior(const double ell, const double sdEll);
 
 double 
-trace(gsl_matrix * X, size_t n);
+trace(const gsl_matrix * X);
 
 double 
-aLogPrior(gsl_matrix * A);
+aLogPrior(const gsl_matrix * A);
 
 double
-shiftLogPrior(gsl_vector * shift, double sdShift);
+shiftLogPrior(const gsl_vector * shift, const double sdShift);

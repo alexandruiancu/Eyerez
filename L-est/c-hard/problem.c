@@ -9,16 +9,36 @@
 #include <gsl/gsl_blas.h>
 #include <gsl/gsl_randist.h>
 
+const double SCALE = 1;
+
+double 
+logPost(const obsmat os, 
+        const double ell,
+        const double sdEll,
+        const gsl_vector *c,
+        const double sdShift,
+        const gsl_matrix *A, 
+        const double sdError) 
+{
+  double logP = 0;
+  logP += logLik(os, ell, c, A, sdError);
+  logP += aLogPrior(A);
+  logP += ellLogPrior(ell, sdEll);
+  logP += shiftLogPrior(c, sdShift);
+  return logP;
+}
+
 double 
 logLik(const obsmat os, 
-       const double L, 
+       const double ell, 
        const gsl_vector *c, 
        const gsl_matrix *A, 
        const double sdError) 
 {
   obsmat oscpy = gsl_matrix_alloc(os->size1, os->size2);
   gsl_matrix_memcpy(oscpy, os);
-  toRealSpace(oscpy, L, 1);
+  toRealSpace(oscpy, ell, 1);
+
   size_t N = os->size2;
   size_t i;
   double logL = 0;
@@ -29,9 +49,9 @@ logLik(const obsmat os,
     gsl_vector_memcpy(o, &(&view)->vector);
     
     double d = computeDistance(o, c, A);
-    d = log(gsl_ran_gaussian_pdf(d, sdError));
+    d = log(gsl_ran_gaussian_pdf(d, 10));
     
-    logL += d;
+    logL += SCALE*d;
   }
 
   gsl_matrix_free(oscpy);
@@ -59,27 +79,24 @@ computeDistance(const gsl_vector *ob, const gsl_vector *c, const gsl_matrix *A) 
 }
 
 double
-ellLogPrior(double ell, double muEll, double sdEll) {
+ellLogPrior(const double ell, const double sdEll) {
   double ALIGNMU = 30.4055916;
   double ALIGNSD = 3; 
   
   double logL = 0;
 
   // log P(L | mu, sd) ...
-  logL += log(gsl_ran_gaussian_pdf(muEll - ell, sdEll));
-
-  // ... + log P(mu)
-  logL += log(gsl_ran_gaussian_pdf(ALIGNMU - muEll, ALIGNSD));
+  logL += log(gsl_ran_gaussian_pdf(ALIGNMU - ell, sdEll));
 
   // ... + log P(sd)
   logL -= log(sdEll);
 
-  return logL;
+  return SCALE*logL;
 }
 
-
 double
-trace(gsl_matrix * X, size_t n) {
+trace(const gsl_matrix * X) {
+  size_t n = X->size1;
   double tr = 0;
   size_t i;
   for (i = 0; i < n; i++) {
@@ -89,36 +106,36 @@ trace(gsl_matrix * X, size_t n) {
 }
 
 double 
-aLogPrior(gsl_matrix * A) {
+aLogPrior(const gsl_matrix * A) {
   double EXP_R = 3;
   double DOF = 30;
   double logL = 0;
   
-
   gsl_permutation * perm = gsl_permutation_calloc(3);
   int s = 0;
   
+  gsl_matrix *Acpy = gsl_matrix_alloc(3, 3);
   gsl_matrix *lu = gsl_matrix_alloc(3, 3);
-  gsl_matrix *Ai = gsl_matrix_alloc(3, 3);
+  gsl_matrix_memcpy(Acpy, A);
   gsl_matrix_memcpy(lu, A);
+
   gsl_linalg_LU_decomp(lu, perm, &s);
-  gsl_matrix_memcpy(Ai, A);
-  gsl_linalg_LU_invert(lu, perm, Ai);
-  double tr = trace(Ai, 3);
+  gsl_matrix_scale(Acpy, 1/EXP_R);
+
+  double tr = trace(Acpy);
   double lndet = gsl_linalg_LU_lndet(lu);
 
-  logL += (3 - DOF/2) * log(EXP_R/DOF);
   logL += (DOF - 4)/2 * lndet;
-  logL += (-1/2) * pow(EXP_R/DOF, 3) * tr;
+  logL += (-1/2) * tr;
 
-  gsl_matrix_free(Ai);
+  gsl_matrix_free(Acpy);
   gsl_matrix_free(lu);
 
-  return logL;
+  return SCALE*logL;
 }
 
 double
-shiftLogPrior(gsl_vector * shift, double sdShift) {
+shiftLogPrior(const gsl_vector * shift, const double sdShift) {
   double logL = 0;
   size_t i;
   for (i = 0; i < 3; i++) {
@@ -126,5 +143,5 @@ shiftLogPrior(gsl_vector * shift, double sdShift) {
   }
   
   logL -= log(sdShift);
-  return logL;
+  return SCALE*logL;
 }
