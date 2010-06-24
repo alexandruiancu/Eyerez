@@ -6,22 +6,28 @@ LIBS= ${VENDORINCLUDE} ${VENDORLIB} ${INCL}
 LD= -lcsv_parser -lgsl -lgmp -lgmpxx -lgslcblas
 BUILDDIR=build
 
-all: est
+all: mcmc.o
 
-est: est.cc problem libs
-	${CPPC} ${FLAGS} ${LIBS} ${LD} -o ${BUILDDIR}/est est.cc
+clean: 
+	rm -r build/*
 
-problem: problem.c data
-	${CPPC} ${FLAGS} ${LIBS} -c -o ${BUILDDIR}/problem.o problem.c ${BUILDDIR}/data.o
+# est: est.cc problem libs
+# 	${CPPC} ${FLAGS} ${LIBS} ${LD} -o build/est est.cc
 
-data: data.cc
-	${CPPC} ${FLAGS} ${LIBS} -c -o ${BUILDDIR}/data.o data.cc
+problem.o: problem.c problem.h data.o
+	${CPPC} ${FLAGS} ${LIBS} -c -o build/problem.o problem.c build/data.o
+
+data.o: data.cc data.h
+	${CPPC} ${FLAGS} ${LIBS} -c -o build/data.o data.cc
+
+mcmc.o: mcmc.cc mcmc.h data.o problem.o
+	${CPPC} ${FLAGS} ${LIBS} -c -o build/mcmc.o mcmc.cc
 
 check: test
 
-test: problem data
-	${CPPC} ${FLAGS} -g ${LIBS} -lcheck ${LD} -o ${BUILDDIR}/test test/test.c problem.c ${BUILDDIR}/data.o
-	${BUILDDIR}/test
+test: problem.o data.o mcmc.o
+	${CPPC} ${FLAGS} -g ${LIBS} -lcheck ${LD} -o build/test test/test.c build/*.o
+	build/test
 
 
 libs:
