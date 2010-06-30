@@ -154,6 +154,10 @@ namespace Problem {
 
       logLik += datasetLogLik(obs, L, lambda, Q, c, sdR, sdZ);
       logLik += priors();
+
+      gsl_vector_free(c);
+      gsl_matrix_free(Q);
+      gsl_vector_free(lambda);
       
       return logLik;
     } else {
@@ -251,7 +255,6 @@ namespace Problem {
     t2 -= 4 * prod * (u2 + v2 + w2);
     t2 -= a2*b4*u2 + a4*b2*v2 + b2*c4*v2 + b4*c2*w2 + a2*c4*u2 + a4*c2*w2;
     
-    
     t3  = 2 * (a4*b2 + a4*c2 + a2*b4 + a2*c4 + b4*c2 + b2*c4);
     t3 += 8 * prod;
     t3 -= 2 * prod * (u2/c2 + u2/b2 + v2/c2 + v2/a2 + w2/b2 + w2/a2);
@@ -266,7 +269,7 @@ namespace Problem {
     
     const size_t N = 7;
     double coefs[N] = { const_term, t1, t2, t3, t4, t5, t6 };
-    double z[2*(N-1)];
+    double z[2*(N-1)] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     
     gsl_poly_complex_workspace * workspace
       = gsl_poly_complex_workspace_alloc(N);
@@ -318,7 +321,7 @@ namespace Problem {
   }
   
   double
-  obserationLogLik(const gsl_vector *ob,
+  observationLogLik(const gsl_vector *ob,
                    const gsl_vector *lambda,
                    const gsl_matrix *Q,
                    const gsl_vector *c,
@@ -331,7 +334,7 @@ namespace Problem {
     gsl_vector *ytmp   = gsl_vector_alloc(D);
     
     double logLik =
-      _obserationLogLik(ob, lambda, Q, c, sdR, sdZ, uvw, ytmp);
+      _observationLogLik(ob, lambda, Q, c, sdR, sdZ, uvw, ytmp);
     
     gsl_vector_free(ytmp);
     gsl_vector_free(uvw);
@@ -340,7 +343,7 @@ namespace Problem {
   } 
   
   double
-  _obserationLogLik(const gsl_vector *ob,
+  _observationLogLik(const gsl_vector *ob,
                     const gsl_vector *lambda,
                     const gsl_matrix *Q,
                     const gsl_vector *c,
@@ -355,6 +358,7 @@ namespace Problem {
     gsl_vector_scale(ytmp, -1); // ytmp <- -o
     gsl_vector_add(ytmp, ob);   // ytmp <- ytmp + (an observation)
                                 // [ytmp <- (-c) + (an observation)]
+    gsl_vector_set_zero(uvw);
     gsl_blas_dgemv(CblasTrans,
                    1.0, Q, ytmp,
                    0.0, uvw);   // uvw <- Qt * ytmp
@@ -389,9 +393,10 @@ namespace Problem {
     for (size_t n = 0; n < N; n++) { 
       obs->writeObservation(n, ob);     
       logLik +=
-        _obserationLogLik(ob, lambda, Q, c, sdR, sdZ, uvw, ytmp);
+        _observationLogLik(ob, lambda, Q, c, sdR, sdZ, uvw, ytmp);
     }
-    
+
+    gsl_vector_free(ob);
     gsl_vector_free(ytmp);
     gsl_vector_free(uvw);
     

@@ -40,6 +40,7 @@ Observations::Observations(FILE *f, const CoordSystem system_in) {
   }
 
   init(obs, system_in);
+  gsl_matrix_free(obs);
 }
 
 Observations::~Observations() {

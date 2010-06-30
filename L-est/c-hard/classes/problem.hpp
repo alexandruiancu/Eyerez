@@ -89,14 +89,14 @@ namespace Problem {
   /// observationLogLik without directly allocating inner work
   /// vectors.
   double
-  _obserationLogLik(const gsl_vector *ob,
-                    const gsl_vector *lambda,
-                    const gsl_matrix *Q,
-                    const gsl_vector *c,
-                    const double sdR,
-                    const double sdZ,
-                    gsl_vector *uvw,
-                    gsl_vector *ytmp);
+  _observationLogLik(const gsl_vector *ob,
+                     const gsl_vector *lambda,
+                     const gsl_matrix *Q,
+                     const gsl_vector *c,
+                     const double sdR,
+                     const double sdZ,
+                     gsl_vector *uvw,
+                     gsl_vector *ytmp);
   
   /// Compute the log likelihood of the independent observation matrix
   /// given that they are measurements of a given ellipsoid with normal,
@@ -109,12 +109,12 @@ namespace Problem {
   /// the ellipsoid (ie. the space where the major axes of the ellipsoid
   /// are aligned with the basis).
   double
-  obserationLogLik(const gsl_vector *ob,
-                   const gsl_vector *lambda,
-                   const gsl_matrix *Q,
-                   const gsl_vector *c,
-                   const double sdR,
-                   const double sdZ);
+  observationLogLik(const gsl_vector *ob,
+                    const gsl_vector *lambda,
+                    const gsl_matrix *Q,
+                    const gsl_vector *c,
+                    const double sdR,
+                    const double sdZ);
   
   /// Computes the log likelihood of the complete dataset of
   /// observations according to the model that they are
