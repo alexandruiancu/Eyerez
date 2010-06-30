@@ -14,7 +14,6 @@ int main () {
   Metropolis *m1 = new Metropolis (Problem::logPost, init, obs, 0.01);
 
   // Burn-in stage.
-  double temp;
   for (size_t i = 0; i < 2000; i++) {
     m1->jump();
     if (rand()%100 < 10) {
