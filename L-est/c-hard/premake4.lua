@@ -1,16 +1,22 @@
+dofile "p4defs.lua"
+
+newoption {
+   trigger     = "valgrind",
+   description = "Check tests using Valgrind."
+}
 
 solution "MySolution"
 	configurations {'Debug', 'Release'}
 
-        includedirs { '.', 'vendor/include' }
-        libdirs { '.', 'vendor/lib' }
+        includedirs { 'vendor/include', 'src/' }
+        libdirs { 'vendor/lib' }
+        links { 'csv_parser', 'gsl', 'gslcblas' }
 
         configuration 'Debug'
         	targetdir 'build/debug'
         	defines { "_DEBUG" }
                 flags { 
                    'ExtraWarnings', 
-                   'FatalWarnings',
                    'Symbols'
                 }
 
@@ -26,20 +32,14 @@ project 'lmcmc'
 	language 'C++'
 
         files {
-           "classes/*.cc"
+           "src/classes/*.cc"
         }
 
-        links { 'csv_parser', 'gsl', 'gslcblas' }
+test('foo')
 
-project 'test'
-        kind 'ConsoleApp'
-        language 'C++'
-        files 'test/test.cc'
-
-	targetname 'test_me'
-	flags { "ExtraWarnings", "FatalWarnings", "Symbols" }
-	links { 
-           'lmcmc',
-           'gsl'
-        }
-        targetdir 'build/test'
+if _ACTION == 'clean' then
+   for k, name in pairs(tests) do
+      os.execute ('rm -rf build')
+      os.remove ('tests/' .. name .. '.cc')
+   end
+end

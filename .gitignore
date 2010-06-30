@@ -8,7 +8,6 @@
 thumbs.db
 *bin/
 */**/build
-*/**/vendor
 Makefile
 *.make
 obj/
