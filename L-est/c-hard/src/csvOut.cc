@@ -42,10 +42,9 @@ int main (int argc, char *argv[]) {
   m1->freeze();
   for (size_t i = 0; i < 4000; i++) { 
     m1->jump();   
-    if (i%100 == 1) fprintf(stderr, "+");
+    outputRow(m1->state, 17);
+    fprintf(stderr, ".");
   }
-  
-  outputRow(m1->state, 17);
   
   delete m1;
   gsl_vector_free(init);    

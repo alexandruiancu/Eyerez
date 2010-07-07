@@ -273,10 +273,16 @@ namespace Problem {
     
     gsl_poly_complex_workspace * workspace
       = gsl_poly_complex_workspace_alloc(N);
-    
-    /// REALLY REALLY SLOW!
-    int err = gsl_poly_complex_solve(coefs, N, workspace, z);
-    if (err) { throw; }
+
+    int err;
+    do {
+      /// REALLY REALLY SLOW!
+
+      gsl_error_handler_t *old_handler = gsl_set_error_handler_off();
+      err = gsl_poly_complex_solve(coefs, N, workspace, z);
+      gsl_set_error_handler(old_handler);
+    } while (err);
+    if (err) throw err;
     
     gsl_poly_complex_workspace_free(workspace);
     
