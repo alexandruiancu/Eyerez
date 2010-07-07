@@ -17,10 +17,11 @@ A single laser that is scanning at a right angle from the rotational
 axis of the eye produces data corresponding to the measured distance,
 the current $z$-position, and the current $\theta$-position. These
 triples $(d_{laser}, z_{laser}, \theta_{laser})$ exist in an inverted
-polar coordinate system that has been mirrored across the central
-axis. Since the laser head is at a right angle to the rotation axis,
-however, conversion to real polar space $(r, z, \theta)$ is very easy
-given knowledge of the parameter $L$.
+polar coordinate system that has been mirrored across the central axis
+(see Figure \ref{fig:ideal-laser-geometry}). Since the laser head is
+at a right angle to the rotation axis, however, conversion to real
+polar space $(r, z, \theta)$ is very easy given knowledge of the
+parameter $L$.
 
 \begin{align}
   r &= L - d_{laser} \\
