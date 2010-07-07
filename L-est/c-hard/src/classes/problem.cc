@@ -24,9 +24,9 @@ namespace Problem {
     // sdCx = R->drawGamma(0.01, 1);
     // sdCy = R->drawGamma(0.01, 1);
     // sdCz = R->drawGamma(0.01, 1);
-    // cx   = R->drawGaussian(0, 1);
-    // cx   = R->drawGaussian(0, 1);
-    // cx   = R->drawGaussian(0, 1);
+    // cx   = R->drawGaussian(0.0, 1);
+    // cy   = R->drawGaussian(0.0, 1);
+    // cz   = R->drawGaussian(0.0, 1);
     // sdR  = R->drawGamma(0.01, 1);
     // sdZ  = R->drawGamma(0.01, 1);
 
@@ -36,15 +36,15 @@ namespace Problem {
     A    = 1.75;
     B    = 1.75;
     C    = 1.75;
-    rot1 = 0;
-    rot2 = 0;
-    rot3 = 0;
+    rot1 = 0.001;
+    rot2 = 0.001;
+    rot3 = 0.001;
     sdCx = 0.1;
     sdCy = 0.1;
     sdCz = 0.1;
-    cx   = 0;
-    cx   = 0;
-    cx   = 0;
+    cx   = 0.001;
+    cy   = 0.001;
+    cz   = 0.001;
     sdR  = 0.1;
     sdZ  = 0.1;
 
@@ -274,7 +274,9 @@ namespace Problem {
     gsl_poly_complex_workspace * workspace
       = gsl_poly_complex_workspace_alloc(N);
     
-    gsl_poly_complex_solve(coefs, N, workspace, z);
+    /// REALLY REALLY SLOW!
+    int err = gsl_poly_complex_solve(coefs, N, workspace, z);
+    if (err) { throw; }
     
     gsl_poly_complex_workspace_free(workspace);
     
@@ -352,6 +354,7 @@ namespace Problem {
                     gsl_vector *uvw,
                     gsl_vector *ytmp) {
     
+    // !! These are some of the more expensive operations
     // Shift and rotate to the eigenspace
     // Qt (y - c) ---> (u, v, w)
     gsl_vector_memcpy(ytmp, c); // ytmp <- c
