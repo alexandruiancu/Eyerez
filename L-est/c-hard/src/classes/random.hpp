@@ -32,6 +32,11 @@ public:
 
   // Sample a random gamma variance.
   double drawGamma(double a = 1.0, double b = 1.0);
+  
+  // Sample a random integer between [0, maxIndex-1] including the
+  // entire size of an unsigned long integer as its range.
+  unsigned long int
+  Random::drawUniformIndex(unsigned long int maxIndex)
 };
 
 #endif
