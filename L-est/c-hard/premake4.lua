@@ -28,17 +28,36 @@ solution "MySolution"
                 }
 
 project 'lmcmc'
-	kind 'SharedLib'
+	kind 'StaticLib'
 	language 'C++'
 
         files {
            "src/classes/*.cc"
         }
 
-test('foo')
+project 'dostuff'
+        kind 'ConsoleApp'
+        language 'C++'
+
+        files {
+           'src/csvOut.cc'
+        }
+
+        links 'lmcmc'
+
+        flags {
+           'FloatStrict',
+           'OptimizeSpeed'
+        }
+
+tests { 
+   'functional'
+}
+
+
 
 if _ACTION == 'clean' then
-   for k, name in pairs(tests) do
+   for k, name in pairs(alltests) do
       os.execute ('rm -rf build')
       os.remove ('tests/' .. name .. '.cc')
    end

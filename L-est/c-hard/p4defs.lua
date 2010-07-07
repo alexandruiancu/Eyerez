@@ -1,14 +1,20 @@
-tests = {}
+alltests = {}
+
+function tests( tests )
+   for k, name in pairs(tests) do
+      test (name)
+   end
+end
 
 function test(test_name)
-   table.insert(tests, test_name)
+   table.insert(alltests, test_name)
 
    project ('test_' .. test_name)
       kind 'ConsoleApp'
       language 'C++'
 
       prebuildcommands {          
-         ('cd tests; python ../cxxtestgen.py ' ..
+         ('@cd tests; python ../cxxtestgen.py ' ..
           '--error-printer ' ..
           '-o ' .. test_name .. '.cc ' ..
           test_name .. '.hpp')
@@ -23,6 +29,7 @@ function test(test_name)
       includedirs { 'vendor' }
       libdirs { 'vendor/cxxtest' }
       links { 'lmcmc', 'csv_parser' }
+      buildoptions { "-pg" }
 
       targetdir 'build/tests'
       postbuildcommands { 

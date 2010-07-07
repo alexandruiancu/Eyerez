@@ -1,0 +1,18 @@
+
+* Sphereoid, Polar, Low
+  :PROPERTIES:
+  :Generation: Layered
+  :Coordinate: Polar
+  :L:        29.3
+  :sdR:      0.0006
+  :sdZ:      0.0002
+  :END:
+
+* Sphereoid, Polar, High
+  :PROPERTIES:
+  :Generation: Layered
+  :Coordinate: Polar
+  :L:        29.3
+  :sdR:      0.006
+  :sdZ:      0.002
+  :END:
