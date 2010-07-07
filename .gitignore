@@ -11,3 +11,10 @@ thumbs.db
 Makefile
 *.make
 obj/
+auto/
+*.log
+*.aux
+*.bbl
+*.blg
+*.pdf
+*.toc
