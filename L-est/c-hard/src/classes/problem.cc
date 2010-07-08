@@ -12,41 +12,41 @@ namespace Problem {
   State::State() {
     Random *R = new Random();
 
-    // muL  = R->drawGaussian(30.4, 1);
-    // sdL  = R->drawGamma(0.01, 1);
-    // L    = R->drawGaussian(30.4, 1);
-    // A    = R->drawGaussian(1.75, 0.5);
-    // B    = R->drawGaussian(1.75, 0.5);
-    // C    = R->drawGaussian(1.75, 0.5);
-    // rot1 = R->drawGaussian(0, M_PI/8);
-    // rot2 = R->drawGaussian(0, M_PI/16);
-    // rot3 = R->drawGaussian(0, M_PI/8);
-    // sdCx = R->drawGamma(0.01, 1);
-    // sdCy = R->drawGamma(0.01, 1);
-    // sdCz = R->drawGamma(0.01, 1);
+    // muL  = R->drawGaussian(30400, 1);
+    // sdL  = R->drawGamma(10, 1);
+    // L    = R->drawGaussian(30400, 1);
+    // A    = R->drawGaussian(1750, 0.5);
+    // B    = R->drawGaussian(1750, 0.5);
+    // C    = R->drawGaussian(1750, 0.5);
+    // rot1 = R->drawGaussian(0.0, M_PI/8);
+    // rot2 = R->drawGaussian(0.0, M_PI/16);
+    // rot3 = R->drawGaussian(0.0, M_PI/8);
+    // sdCx = R->drawGamma(10, 1);
+    // sdCy = R->drawGamma(10, 1);
+    // sdCz = R->drawGamma(10, 1);
     // cx   = R->drawGaussian(0.0, 1);
     // cy   = R->drawGaussian(0.0, 1);
     // cz   = R->drawGaussian(0.0, 1);
-    // sdR  = R->drawGamma(0.01, 1);
-    // sdZ  = R->drawGamma(0.01, 1);
+    // sdR  = R->drawGamma(10, 1);
+    // sdZ  = R->drawGamma(10, 1);
 
-    muL  = 30.4;
-    sdL  = 0.1;
-    L    = 30.4;
-    A    = 1.75;
-    B    = 1.75;
-    C    = 1.75;
+    muL  = 30400.0;
+    sdL  = 100.0;
+    L    = 30400.0;
+    A    = 1750.0;
+    B    = 1750.0;
+    C    = 1750.0;
     rot1 = 0.001;
     rot2 = 0.001;
     rot3 = 0.001;
-    sdCx = 0.1;
-    sdCy = 0.1;
-    sdCz = 0.1;
-    cx   = 0.001;
-    cy   = 0.001;
-    cz   = 0.001;
-    sdR  = 0.1;
-    sdZ  = 0.1;
+    sdCx = 100.0;
+    sdCy = 100.0;
+    sdCz = 100.0;
+    cx   = 1.0;
+    cy   = 1.0;
+    cz   = 1.0;
+    sdR  = 100.0;
+    sdZ  = 100.0;
 
     delete R;
   }
@@ -176,8 +176,8 @@ namespace Problem {
     logLik += log(gsl_ran_gaussian_pdf(rot3, ROT_SD));
 
     // Axes
-    const double AXES_MU = 1.75;
-    const double AXES_SD = 0.5;;
+    const double AXES_MU = 1750;
+    const double AXES_SD = 500;
     logLik += log(gsl_ran_gaussian_pdf(A - AXES_MU, AXES_SD));
     logLik += log(gsl_ran_gaussian_pdf(B - AXES_MU, AXES_SD));
     logLik += log(gsl_ran_gaussian_pdf(C - AXES_MU, AXES_SD));
@@ -192,13 +192,13 @@ namespace Problem {
     logLik += log(gsl_ran_gaussian_pdf(cz, sqrt(sdCz)));
 
     // Shift variance
-    logLik -= 10*log(sdCx);
-    logLik -= 10*log(sdCy);
-    logLik -= 10*log(sdCz);
+    logLik -= log(sdCx);
+    logLik -= log(sdCy);
+    logLik -= log(sdCz);
 
     // L
     logLik += log(gsl_ran_gaussian_pdf(L - muL, sdL));
-    logLik += log(gsl_ran_gaussian_pdf(muL - 30.4, 1.5));
+    logLik += log(gsl_ran_gaussian_pdf(muL - 30400, 1500));
     logLik -= log(sdL);
 
     return logLik;
