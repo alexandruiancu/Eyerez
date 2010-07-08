@@ -14,6 +14,8 @@
 
 namespace Problem {
 
+  const size_t NSAMPLES = 100;
+
   double
   logPost(const gsl_vector *x, Observations *obs_in);
 

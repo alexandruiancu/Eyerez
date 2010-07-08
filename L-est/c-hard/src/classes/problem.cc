@@ -274,14 +274,10 @@ namespace Problem {
     gsl_poly_complex_workspace * workspace
       = gsl_poly_complex_workspace_alloc(N);
 
-    int err;
-    do {
-      /// REALLY REALLY SLOW!
+    gsl_error_handler_t *old_handler = gsl_set_error_handler_off();
+    int err = gsl_poly_complex_solve(coefs, N, workspace, z);
+    gsl_set_error_handler(old_handler);
 
-      gsl_error_handler_t *old_handler = gsl_set_error_handler_off();
-      err = gsl_poly_complex_solve(coefs, N, workspace, z);
-      gsl_set_error_handler(old_handler);
-    } while (err);
     if (err) throw err;
     
     gsl_poly_complex_workspace_free(workspace);
@@ -393,22 +389,55 @@ namespace Problem {
                 const double sdZ) {
     size_t N = obs->N;
     size_t D = obs->D;
+
+    Random *R = new Random();
     
-    double logLik = 0;
+    double aveLogLik = 0;
     gsl_vector *uvw    = gsl_vector_alloc(D);
     gsl_vector *ytmp   = gsl_vector_alloc(D);
     gsl_vector *ob     = gsl_vector_alloc(D);
 
-    for (size_t n = 0; n < N; n++) { 
-      obs->writeObservation(n, ob);     
-      logLik +=
+    /* Bootstrap with replacement NSAMPLES samples from the
+       observation matrix to find an estimate for the average logLik
+       then scale it by N/NSAMPLES to get an estimate for the total
+       logLik of the dataset.
+
+       This introduces the possibility of instability of the estimate,
+       but so long as NSAMPLES is suitable large (TODO: determine how
+       large it must be) this should converge well.
+
+       Additionally, if any of the computations fail to converge for
+       any reason, do not include them in the sample. I believe this
+       will eliminate points that are "near" any of the orthogonal
+       planes in the system but I believe "near" must mean
+       "numerically zero" and therefore with eyes around 3mm in
+       diameter the majority of the points should be included in the
+       sampling population.
+
+       TODO: check above assumption.
+    */
+
+    size_t nchosen = 0;
+    do {
+      nchosen++;
+
+      // Get a random observation
+      obs->writeObservation(R->drawUniformIndex(N), ob);     
+
+      // Try to find the likelihood, but if it fails forget about it.
+      try {
+      aveLogLik +=
         _observationLogLik(ob, lambda, Q, c, sdR, sdZ, uvw, ytmp);
+      } catch(int) { nchosen--; }
+      
     }
+    while (nchosen < NSAMPLES);
 
     gsl_vector_free(ob);
     gsl_vector_free(ytmp);
     gsl_vector_free(uvw);
+    delete R;
     
-    return logLik;
+    return exp(log(N) - log(NSAMPLES))*aveLogLik;
   }
 }
