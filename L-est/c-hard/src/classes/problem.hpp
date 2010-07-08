@@ -14,6 +14,13 @@
 
 namespace Problem {
 
+  /** Defines a problem, a function of the type 
+      double (*)(const gsl_vector *x, Observations *obs_in)
+      which is the logLikelihood of the problem space.
+
+      For this problem the units are in um.
+  */
+
   const size_t NSAMPLES = 100;
 
   double

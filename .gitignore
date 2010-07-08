@@ -18,3 +18,4 @@ auto/
 *.blg
 *.pdf
 *.toc
+*/**/tests/*.cc

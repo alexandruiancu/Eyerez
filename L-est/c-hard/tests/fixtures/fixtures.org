@@ -1,11 +1,39 @@
 
+* Sphere, Rect
+  :PROPERTIES:
+  :Generation: Layered
+  :Coordinate: Rectangular
+  :L:        NA
+  :sdR:      0
+  :sdZ:      0
+  :X:        1500
+  :Y:        1500
+  :Z:        1500
+  :END:
+
+
+* Sphere, Rect
+  :PROPERTIES:
+  :Generation: Layered
+  :Coordinate: Polar
+  :L:        NA
+  :sdR:      0
+  :sdZ:      0
+  :X:        1500
+  :Y:        1500
+  :Z:        1500
+  :END:
+
 * Sphereoid, Polar, Low
   :PROPERTIES:
   :Generation: Layered
   :Coordinate: Polar
-  :L:        29.3
-  :sdR:      0.0006
-  :sdZ:      0.0002
+  :L:        29300
+  :sdR:      0.6
+  :sdZ:      0.2
+  :X:        1800
+  :Y:        1800
+  :Z:        1650
   :END:
 
 * Sphereoid, Polar, High
@@ -13,6 +41,9 @@
   :Generation: Layered
   :Coordinate: Polar
   :L:        29.3
-  :sdR:      0.006
-  :sdZ:      0.002
+  :sdR:      6
+  :sdZ:      2
+  :X:        1800
+  :Y:        1800
+  :Z:        1650
   :END:
