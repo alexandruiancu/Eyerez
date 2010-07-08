@@ -37,3 +37,8 @@ double
 Random::drawGamma(double a, double b) {
   return gsl_ran_gamma(rng, a, b);
 }
+
+unsigned long int
+Random::drawUniformIndex(unsigned long int maxIndex) {
+  return gsl_rng_uniform_int(rng, maxIndex);
+}

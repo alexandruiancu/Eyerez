@@ -71,16 +71,23 @@ Metropolis::freeze() {
 gsl_vector *
 Metropolis::allocProposal() {
   gsl_vector *xp = gsl_vector_alloc(N);
+  Problem::State s;
 
-  // Draw N uncorrelated N(0, 1)
-  for (size_t i = 0; i < N; i++) { 
-    gsl_vector_set(xp, i, R->drawGaussian());
-  }
+  do {
 
-  var->scaleNormal(xp);
-  gsl_vector_add(xp, state);
+    // Draw N uncorrelated N(0, 1)
+    for (size_t i = 0; i < N; i++) { 
+      gsl_vector_set(xp, i, R->drawGaussian());
+    }
+    
+    var->scaleNormal(xp);
+    gsl_vector_add(xp, state);
+    
+    s = Problem::State(xp, obs);
+  } while (!s.isValid());
 
   return xp;
+
 }
 
 void 
