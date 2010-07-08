@@ -1,15 +1,5 @@
 #include "metropolis.hpp"
 
-#include <cmath>
-#include <iostream>
-#include <gsl/gsl_linalg.h>
-#include <gsl/gsl_matrix.h>
-#include <gsl/gsl_vector.h>
-#include <gsl/gsl_blas.h>
-#include <gsl/gsl_randist.h>
-#include <gsl/gsl_multimin.h>
-#include <gsl/gsl_permutation.h>
-
 const size_t Metropolis::countMax = 50;
 
 Metropolis::Metropolis(double (*logL_in)(const gsl_vector *x, Observations *obs_in), 

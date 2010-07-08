@@ -1,9 +1,5 @@
 #include "random.hpp"
 
-#include <iostream>
-#include <gsl/gsl_randist.h>
-
-
 Random::Random() {
   gsl_rng_env_setup();
   rngT = gsl_rng_default;

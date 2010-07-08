@@ -1,17 +1,21 @@
 #ifndef METROPOLIS_H
 #define METROPOLIS_H
 
-#include <classes/observations.hpp>
-#include <classes/variance.hpp>
-#include <classes/problem.hpp>
-#include <classes/random.hpp>
-
 #include <cmath>
+#include <iostream>
 #include <gsl/gsl_linalg.h>
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_vector.h>
 #include <gsl/gsl_blas.h>
 #include <gsl/gsl_randist.h>
+#include <gsl/gsl_multimin.h>
+#include <gsl/gsl_permutation.h>
+
+#include <classes/observations.hpp>
+#include <classes/variance.hpp>
+#include <classes/problem.hpp>
+#include <classes/random.hpp>
+
 
 class Metropolis {
   // Resampling period

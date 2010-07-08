@@ -1,13 +1,5 @@
 #include "variance.hpp"
 
-#include <cmath>
-#include <iostream>
-#include <gsl/gsl_linalg.h>
-#include <gsl/gsl_matrix.h>
-#include <gsl/gsl_vector.h>
-#include <gsl/gsl_blas.h>
-#include <gsl/gsl_randist.h>
-
 VarianceM::VarianceM(const size_t N_in, const double sigma) {
   N = N_in;
   self = gsl_matrix_alloc(N, N);
