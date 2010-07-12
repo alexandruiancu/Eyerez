@@ -1,6 +1,8 @@
 #include <stdio.h>
-#include <classes/metropolis.hpp>
-#include <classes/problem.hpp>
+
+#include <gsl/gsl_vector.h>
+
+
 
 void outputRow(gsl_vector *m, size_t N);
 

@@ -73,5 +73,14 @@ public:
 
 };
 
+// The two interface function types.
+typedef gsl_vector *(*view_f)(const State *);
+typedef int         (*update_f)(const gsl_vector *, State *);
+
+/// A function that creates a random initial guess vector in order to
+/// have the sampler initialize some part of the state. Output vector
+/// must correspond to the input vector for the `update` function.
+typedef gsl_vector *(*init_f)();
+
 
 #endif
