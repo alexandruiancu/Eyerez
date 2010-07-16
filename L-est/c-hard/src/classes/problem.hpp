@@ -5,139 +5,192 @@
 #include <iostream>
 
 #include <gsl/gsl_vector.h>
-#include <gsl/gsl_poly.h>
-#include <gsl/gsl_randist.h>
-#include <gsl/gsl_blas.h>
+#include <gsl/gsl_matrix.h>
 
-#include <classes/observations.hpp>
-#include <classes/random.hpp>
+#include <classes/state.hpp>
 
-namespace Problem {
+// Forward declarations
+class Observations;
+class Random;
 
-  /** Defines a problem, a function of the type 
-      double (*)(const gsl_vector *x, Observations *obs_in)
-      which is the logLikelihood of the problem space.
+namespace MyUtilities {
+  class parameter {
 
-      For this problem the units are in um.
-  */
-
-  const size_t NSAMPLES = 100;
-
-  double
-  logPost(const gsl_vector *x, Observations *obs_in);
-
-  class State {
+    double self;
+    bool initialized;
+    bool edited;
+    
   public:
 
-    Observations *obs;
+    parameter ();
 
-    double muL;
-    double sdL;
-    double L;
-    double A;
-    double B;
-    double C;
-    double rot1;
-    double rot2;
-    double rot3;
-    double cx;
-    double cy;
-    double cz;
-    double sdCx;
-    double sdCy;
-    double sdCz;
-    double sdR;
-    double sdZ;
+    /// Getter and setter.
+    double operator() () const;
+    void operator() (double new_value);
 
-    /// Create a random state without initializing on Observations.
-    State();
+    /// Determine if the slot has been initialized.
+    bool isInitialized ();
 
-    /// Create a state representation from the vector x.
-    State(const gsl_vector *x, Observations *obs_in);
+    /// Determine if the slot has been changed since the last repair.
+    bool isEdited ();
 
-    /// Create a vector representation of the state; useful for
-    /// manually generating state vectors.
-    gsl_vector *allocVectorized();
+    /// Clean the value after a repair.
+    void clean ();
 
-    /// Check truncations and state whether this state has a positive
-    /// likelihood of existence.
-    int isValid();
-
-    /// Calculate the log likelihood of this state.
-    double logLik();
-
-    double priors();
   };
-  
-  /// Compute the value t, used in finding the shortest line between the
-  /// ellipsoid surface and an arbitrary point. The ellipsoid surface is
-  /// defined to be rectangular and zero-centered with major axis
-  /// lengths of (a, b, c).
-  double 
-  findT(const double a, const double b, const double c,
-        const double u, const double v, const double w);
-  
-  /// Compute the difference vector (y-x) for any point y
-  /// where x is the nearest point on the rectangular, zero-centered
-  /// ellipse with major axis lengths (a, b, c). This vector is stored
-  /// in the passed output parameter out.
-  void
-  computeDelta(const double a, const double b, const double c,
-               const double u, const double v, const double w,
-               gsl_vector *out);
-  
-  
-  /// Calculate log error likelihood for a given measurement against 
-  /// a fixed ellipsoid.
-  double
-  ellipsoidLogPdf(const double a, const double b, const double c,
-                  const double u, const double v, const double w,
-                  const double sdR, 
-                  const double sdZ);
-  
-  /// observationLogLik without directly allocating inner work
-  /// vectors.
-  double
-  _observationLogLik(const gsl_vector *ob,
-                     const gsl_vector *lambda,
-                     const gsl_matrix *Q,
-                     const gsl_vector *c,
-                     const double sdR,
-                     const double sdZ,
-                     gsl_vector *uvw,
-                     gsl_vector *ytmp);
-  
-  /// Compute the log likelihood of the independent observation matrix
-  /// given that they are measurements of a given ellipsoid with normal,
-  /// independent errors. The ellipsoid is defined by the decomposition
-  /// of the matrix A where ellipsoid points are x st. t(x) A x - 1 == 0
-  /// and the vector c which pinpoints its center.
-  /// The positive-definite matrix A is eigendecomposed to A = Q L Qt
-  /// where Q are the eigenvectors corresponding to the eigenvalues
-  /// diag(L). In this way, Qt rotates vectors into the eigenspace of
-  /// the ellipsoid (ie. the space where the major axes of the ellipsoid
-  /// are aligned with the basis).
-  double
-  observationLogLik(const gsl_vector *ob,
-                    const gsl_vector *lambda,
-                    const gsl_matrix *Q,
-                    const gsl_vector *c,
-                    const double sdR,
+}
+
+namespace LEst {
+
+  class Estimate : public State {
+
+    const static size_t NSAMPLES = 100;
+    
+    Observations *observations;
+
+    // Priors
+    double logLik, priorQ, priorLambda, priorErr;
+    double priorC, priorCErr, priorL;
+
+    double computeLogLik();
+    double computePriorQ();
+    double computePriorLambda();
+    double computePriorErr();
+    double computePriorC();
+    double computePriorCErr();
+    double computePriorL();
+
+    void repair ();
+
+    
+
+    /// Compute the value t, used in finding the shortest line between the
+    /// ellipsoid surface and an arbitrary point. The ellipsoid surface is
+    /// defined to be rectangular and zero-centered with major axis
+    /// lengths of (a, b, c).
+    double 
+    findT(const double a, const double b, const double c,
+          const double u, const double v, const double w);
+    
+    /// Compute the difference vector (y-x) for any point y
+    /// where x is the nearest point on the rectangular, zero-centered
+    /// ellipse with major axis lengths (a, b, c). This vector is stored
+    /// in the passed output parameter out.
+    void
+    computeDelta(const double a, const double b, const double c,
+                 const double u, const double v, const double w,
+                 gsl_vector *out);
+    
+    
+    /// Calculate log error likelihood for a given measurement against 
+    /// a fixed ellipsoid.
+    double
+    ellipsoidLogPdf(const double a, const double b, const double c,
+                    const double u, const double v, const double w,
+                    const double sdR, 
                     const double sdZ);
-  
-  /// Computes the log likelihood of the complete dataset of
-  /// observations according to the model that they are
-  /// rectangular-space points which have been transformed in
-  /// polar-space by [r <- L-r] for a known L; these (x, y, z) points
-  /// are assumed to fit a known ellipsoid via observationLogLik.
-  double
-  datasetLogLik(Observations *obs,
-                const double L,
-                const gsl_vector *lambda,
-                const gsl_matrix *Q,
-                const gsl_vector *c,
-                const double sdR,
-                const double sdZ);
+    
+    /// observationLogLik without directly allocating inner work
+    /// vectors.
+    double
+    _observationLogLik(const gsl_vector *ob,
+                       const gsl_vector *lambda,
+                       const gsl_matrix *Q,
+                       const gsl_vector *c,
+                       const double sdR,
+                       const double sdZ,
+                       gsl_vector *uvw,
+                       gsl_vector *ytmp);
+    
+    /// Compute the log likelihood of the independent observation matrix
+    /// given that they are measurements of a given ellipsoid with normal,
+    /// independent errors. The ellipsoid is defined by the decomposition
+    /// of the matrix A where ellipsoid points are x st. t(x) A x - 1 == 0
+    /// and the vector c which pinpoints its center.
+    /// The positive-definite matrix A is eigendecomposed to A = Q L Qt
+    /// where Q are the eigenvectors corresponding to the eigenvalues
+    /// diag(L). In this way, Qt rotates vectors into the eigenspace of
+    /// the ellipsoid (ie. the space where the major axes of the ellipsoid
+    /// are aligned with the basis).
+    double
+    observationLogLik(const gsl_vector *ob,
+                      const gsl_vector *lambda,
+                      const gsl_matrix *Q,
+                      const gsl_vector *c,
+                      const double sdR,
+                      const double sdZ);
+    
+    /// Computes the log likelihood of the complete dataset of
+    /// observations according to the model that they are
+    /// rectangular-space points which have been transformed in
+    /// polar-space by [r <- L-r] for a known L; these (x, y, z) points
+    /// are assumed to fit a known ellipsoid via observationLogLik.
+    double
+    datasetLogLik(Observations *obs,
+                  const double L,
+                  const gsl_vector *lambda,
+                  const gsl_matrix *Q,
+                  const gsl_vector *c,
+                  const double sdR,
+                  const double sdZ);
+
+  public:
+
+    /// Public facing parameter interface
+    MyUtilities::parameter L;
+    MyUtilities::parameter A, B, C;
+    MyUtilities::parameter rot1, rot2, rot3;
+    MyUtilities::parameter cx, cy, cz;
+    MyUtilities::parameter sdCx, sdCy, sdCz;
+    MyUtilities::parameter sdR, sdZ;    
+
+    /// Initialize a state with its observations. The state will
+    /// maintain the object and delete it when necessary.
+    Estimate (Observations *obs);
+
+    /// Cleans up the `Observations` object.
+    ~Estimate ();
+
+    /// Clone this estimate
+    Estimate *clone () const;
+
+    /// Determines if every slot has been initialized by samplers.
+    bool isFullyInitialized ();
+
+    /// Returns the result of boundchecking for sampler truncations.
+    bool isValid ();
+
+    double logPost ();
+
+    void pickle (gsl_vector *out) const;
+
+    void unpickle (const gsl_vector *in);
+  };
+
+  gsl_vector *view_ell(const Estimate *);
+  gsl_vector *view_lambda(const Estimate *);
+  gsl_vector *view_rot(const Estimate *);
+  gsl_vector *view_shift(const Estimate *);
+  gsl_vector *view_cerr(const Estimate *);
+  gsl_vector *view_err(const Estimate *);
+
+  void update_ell(const gsl_vector *, Estimate *);
+  void update_lambda(const gsl_vector *, Estimate *);
+  void update_rot(const gsl_vector *, Estimate *);
+  void update_shift(const gsl_vector *, Estimate *);
+  void update_cerr(const gsl_vector *, Estimate *);
+  void update_err(const gsl_vector *, Estimate *);
+
+  gsl_vector *guess0_ell();
+  gsl_vector *guess0_lambda();
+  gsl_vector *guess0_rot();
+  gsl_vector *guess0_shift();
+  gsl_vector *guess0_cerr();
+  gsl_vector *guess0_err();
+
+  // view_f   view_ell, view_lambda, view_rot, view_shift, view_cerr, view_err;
+  // update_f update_ell, update_lambda, update_rot, update_shift, update_cerr, update_err;
+  // init_f   guess0_ell, guess0_lambda, guess0_rot, guess0_shift, guess0_cerr, guess0_err;
 }
 
 #endif

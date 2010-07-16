@@ -82,7 +82,7 @@ Metropolis::jump(State *x) {
   State *xp = x->clone();
   updateWithProposal(xp);
 
-  double alpha = xp->logLik() - x->logLik();
+  double alpha = xp->logPost() - x->logPost();
   double u = R->drawUniform();
 
   if (alpha >= 0 || u < exp(alpha)) {

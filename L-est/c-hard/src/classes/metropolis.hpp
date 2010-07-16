@@ -15,9 +15,6 @@ class Metropolis : public Sampler {
   // Resampling period
   const static size_t  countMax;
 
-  // the log likelihood function
-  double (*logL)(const gsl_vector *x, Observations *obs);
-
   Random       *R;              // A random number instance
   size_t        D;              // size of state vector
   size_t        count;          // counter till next covariance estimation

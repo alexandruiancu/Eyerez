@@ -26,3 +26,21 @@ Sequentially::jump (State *x) {
     (*it)->jump(x);
   }
 }
+
+bool
+Sequentially::isFrozen () {
+  bool out = true;
+  samp_vec::iterator it;
+  for (it = samplers.begin() ; it < samplers.end(); it++) {
+    out &= (*it)->isFrozen();
+  }
+  return out;
+}
+
+void
+Sequentially::initState (State *st) {
+  samp_vec::iterator it;
+  for (it = samplers.begin() ; it < samplers.end(); it++) {
+    (*it)->initState(st);
+  }
+}

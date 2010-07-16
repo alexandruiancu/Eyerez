@@ -1,142 +1,278 @@
 #include "problem.hpp"
 
-using namespace std;
-namespace Problem {
+#include <gsl/gsl_vector.h>
+#include <gsl/gsl_matrix.h>
+#include <gsl/gsl_randist.h>
+#include <gsl/gsl_poly.h>
+#include <gsl/gsl_blas.h>
 
-  double
-  logPost(const gsl_vector *x, Observations *obs_in) {
-    State s (x, obs_in);
-    return s.logLik();
+#include <classes/observations.hpp>
+#include <classes/random.hpp>
+
+namespace MyUtilities {
+
+  parameter::parameter () {
+    initialized = false;
+    edited = false;
+  }
+  
+  double 
+  parameter::operator() () const {
+    if (initialized) {
+      return self;
+    } else {
+      fprintf(stderr, "Accessed uninitialized State parameter!\n");
+      throw 0;
+    }
+  }
+ 
+  void 
+  parameter::operator() (const double new_value) {
+    self = new_value;
+    if (!initialized) { initialized = true; }
+    edited = true;
   }
 
-  State::State() {
-    Random *R = new Random();
-
-    // muL  = R->drawGaussian(30400, 1);
-    // sdL  = R->drawGamma(10, 1);
-    // L    = R->drawGaussian(30400, 1);
-    // A    = R->drawGaussian(1750, 0.5);
-    // B    = R->drawGaussian(1750, 0.5);
-    // C    = R->drawGaussian(1750, 0.5);
-    // rot1 = R->drawGaussian(0.0, M_PI/8);
-    // rot2 = R->drawGaussian(0.0, M_PI/16);
-    // rot3 = R->drawGaussian(0.0, M_PI/8);
-    // sdCx = R->drawGamma(10, 1);
-    // sdCy = R->drawGamma(10, 1);
-    // sdCz = R->drawGamma(10, 1);
-    // cx   = R->drawGaussian(0.0, 1);
-    // cy   = R->drawGaussian(0.0, 1);
-    // cz   = R->drawGaussian(0.0, 1);
-    // sdR  = R->drawGamma(10, 1);
-    // sdZ  = R->drawGamma(10, 1);
-
-    muL  = 30400.0;
-    sdL  = 100.0;
-    L    = 30400.0;
-    A    = 1750.0;
-    B    = 1750.0;
-    C    = 1750.0;
-    rot1 = 0.001;
-    rot2 = 0.001;
-    rot3 = 0.001;
-    sdCx = 100.0;
-    sdCy = 100.0;
-    sdCz = 100.0;
-    cx   = 1.0;
-    cy   = 1.0;
-    cz   = 1.0;
-    sdR  = 100.0;
-    sdZ  = 100.0;
-
-    delete R;
+  bool
+  parameter::isInitialized () {
+    return initialized;
   }
 
-  State::State(const gsl_vector *x, Observations *obs_in) {
-    L    = gsl_vector_get(x, 0);  // V1
-    muL  = gsl_vector_get(x, 1);  // V2
-    sdL  = gsl_vector_get(x, 2);  // V3
-
-    A    = gsl_vector_get(x, 3);  // V4
-    B    = gsl_vector_get(x, 4);  // V5
-    C    = gsl_vector_get(x, 5);  // V6
-    rot1 = gsl_vector_get(x, 6);  // V7
-    rot2 = gsl_vector_get(x, 7);  // V8
-    rot3 = gsl_vector_get(x, 8);  // V9
-
-    cx   = gsl_vector_get(x, 9);  // V10
-    cy   = gsl_vector_get(x, 10); // V11
-    cz   = gsl_vector_get(x, 11); // V12
-    sdCx = gsl_vector_get(x, 12); // V13
-    sdCy = gsl_vector_get(x, 13); // V14
-    sdCz = gsl_vector_get(x, 14); // V15
-    
-    sdR  = gsl_vector_get(x, 15); // V16
-    sdZ  = gsl_vector_get(x, 16); // V17
-
-    obs = obs_in;
+  bool
+  parameter::isEdited () {
+    return edited;
   }
 
-  gsl_vector *
-  State::allocVectorized() {
-    gsl_vector *vec = gsl_vector_alloc(17);
-    double load[17] = {L, muL, sdL, 
-                       A, B, C, 
-                       rot1, rot2, rot3, 
-                       cx, cy, cz,
-                       sdCx, sdCy, sdCz,
-                       sdR, sdZ};
-    for (size_t i = 0; i < 17; i++) { gsl_vector_set(vec, i, load[i]); }
-
-    return vec;
+  void
+  parameter::clean () {
+    edited = false;
   }
 
-  int
-  State::isValid() {
-    int ok = 1;
+}
+
+namespace LEst {
+  Estimate::Estimate (Observations *obs_in) {
+    observations = obs_in;
+  }
+
+  Estimate::~Estimate () {
+    delete observations;
+  }
+
+  Estimate *
+  Estimate::clone () const {
+    Estimate *out = new Estimate (observations);
+    gsl_vector *a_pickle = gsl_vector_alloc(15);
+    pickle(a_pickle);
+    out->unpickle(a_pickle);
+    gsl_vector_free(a_pickle);
+
+    return out;
+  }
+  
+  bool
+  Estimate::isFullyInitialized () {
+    bool out = true;
+    out &= L.isInitialized();
+    out &= A.isInitialized();
+    out &= B.isInitialized();
+    out &= C.isInitialized();
+    out &= rot1.isInitialized();
+    out &= rot2.isInitialized();
+    out &= rot3.isInitialized();
+    out &= cx.isInitialized();
+    out &= cy.isInitialized();
+    out &= cz.isInitialized();
+    out &= sdCx.isInitialized();
+    out &= sdCy.isInitialized();
+    out &= sdCz.isInitialized();
+    out &= sdR.isInitialized();
+    out &= sdZ.isInitialized();
+
+    return out;
+  }
+
+  bool
+  Estimate::isValid () {
+    bool ok = true;
 
     // SDs are positive
-    ok = ok && sdL  > 0;
-    ok = ok && sdCx > 0;
-    ok = ok && sdCy > 0;
-    ok = ok && sdCz > 0;
-    ok = ok && sdR  > 0;
-    ok = ok && sdZ  > 0;
+    ok &= sdCx() > 0;
+    ok &= sdCy() > 0;
+    ok &= sdCz() > 0;
+    ok &= sdR()  > 0;
+    ok &= sdZ()  > 0;
 
     // Rotations are valid
-    ok = ok && (rot1 > -M_PI && rot1 < M_PI);
-    ok = ok && (rot2 > 0     && rot2 < M_PI);
-    ok = ok && (rot3 > -M_PI && rot3 < M_PI);
+    ok &= (rot1() > -M_PI && rot1() < M_PI);
+    ok &= (rot2() > 0     && rot2() < M_PI);
+    ok &= (rot3() > -M_PI && rot3() < M_PI);
     
-    // L and muL are positive
-    ok = ok && L > 0;
-    ok = ok && muL > 0;
+    // L is positive
+    ok &= L() > 0;
 
     // Major axes are positive
-    ok = ok && A > 0;
-    ok = ok && B > 0;
-    ok = ok && C > 0;
+    ok &= A() > 0;
+    ok &= B() > 0;
+    ok &= C() > 0;
 
     return ok;
   }
 
   double
-  State::logLik() {
+  Estimate::logPost () {
     if (isValid()) {
-      double logLik = 0;
+      repair();
+      return (logLik + priorQ + priorLambda + priorErr +
+              priorC + priorCErr + priorL);
+    } else {
+      return -INFINITY;
+    }
+  }
 
+  void
+  Estimate::repair () {
+    // repair the likelihood
+    if (L.isEdited() ||
+        A.isEdited() ||
+        B.isEdited() ||
+        C.isEdited() ||
+        rot1.isEdited() ||
+        rot2.isEdited() ||
+        rot3.isEdited() ||
+        cx.isEdited() ||
+        cy.isEdited() ||
+        cz.isEdited() ||
+        sdR.isEdited() ||
+        sdZ.isEdited()) {
+
+      logLik = computeLogLik();
+
+    }
+
+
+    if (rot1.isEdited() ||
+        rot2.isEdited() ||
+        rot3.isEdited()) {
+      
+      priorQ = computePriorQ();
+
+    }
+
+
+    if (A.isEdited() ||
+        B.isEdited() ||
+        C.isEdited()) {
+
+      priorLambda = computePriorLambda();
+
+    }
+
+
+    if (sdR.isEdited() || sdZ.isEdited()) {
+      priorErr = computePriorErr();
+    }
+
+    if (cx.isEdited() || cy.isEdited() || cz.isEdited() ||
+        sdCx.isEdited() ||
+        sdCy.isEdited() ||
+        sdCz.isEdited()) {
+      priorC = computePriorC();
+    }
+
+    if (sdCx.isEdited() ||
+        sdCy.isEdited() ||
+        sdCz.isEdited()) {
+      priorCErr = computePriorCErr();
+    }
+
+    if (L.isEdited()) {
+      priorL = computePriorL();
+    }
+
+    L.clean(); 
+    A.clean();
+    B.clean();
+    C.clean();
+    rot1.clean();
+    rot2.clean();
+    rot3.clean();
+    cx.clean();
+    cy.clean();
+    cz.clean();
+    sdCx.clean();
+    sdCy.clean();
+    sdCz.clean();
+    sdR.clean();
+    sdZ.clean();
+
+  }
+
+  void
+  Estimate::pickle (gsl_vector *out) const {
+    if (out->size != 15) {
+      fprintf(stderr, "Could not pickle State: pickling vector is of wrong dimension (!= 15)");
+    }
+
+    gsl_vector_set(out, 0, L());
+    gsl_vector_set(out, 1, A());
+    gsl_vector_set(out, 2, B());
+    gsl_vector_set(out, 3, C());
+    gsl_vector_set(out, 4, rot1());
+    gsl_vector_set(out, 5, rot2());
+    gsl_vector_set(out, 6, rot3());
+    gsl_vector_set(out, 7, cx());
+    gsl_vector_set(out, 8, cy());
+    gsl_vector_set(out, 9, cz());
+    gsl_vector_set(out, 10, sdCx());
+    gsl_vector_set(out, 11, sdCy());
+    gsl_vector_set(out, 12, sdCz());
+    gsl_vector_set(out, 13, sdR());
+    gsl_vector_set(out, 14, sdZ());
+
+  }
+
+  void
+  Estimate::unpickle (const gsl_vector *in) {
+    if (in->size != 15) {
+      fprintf(stderr, "Could not unpickle State: pickled vector is of wrong dimension (!= 15)");
+    }
+
+    L(   gsl_vector_get(in, 0));
+    A(   gsl_vector_get(in, 1));
+    B(   gsl_vector_get(in, 2));
+    C(   gsl_vector_get(in, 3));
+    rot1(gsl_vector_get(in, 4));
+    rot2(gsl_vector_get(in, 5));
+    rot3(gsl_vector_get(in, 6));
+    cx(  gsl_vector_get(in, 7));
+    cy(  gsl_vector_get(in, 8));
+    cz(  gsl_vector_get(in, 9));
+    sdCx(gsl_vector_get(in, 10));
+    sdCy(gsl_vector_get(in, 11));
+    sdCz(gsl_vector_get(in, 12));
+    sdR( gsl_vector_get(in, 13));
+    sdZ( gsl_vector_get(in, 14));
+
+  }
+
+
+
+  double
+  Estimate::computeLogLik() {
       gsl_vector *lambda = gsl_vector_alloc(3);
 
-      gsl_vector_set(lambda, 0, A);
-      gsl_vector_set(lambda, 1, B);
-      gsl_vector_set(lambda, 2, C);
+      gsl_vector_set(lambda, 0, A());
+      gsl_vector_set(lambda, 1, B());
+      gsl_vector_set(lambda, 2, C());
       
       gsl_matrix *Q = gsl_matrix_alloc(3, 3);
-      double ca = cos(rot1);
-      double sa = sin(rot1);
-      double cb = cos(rot2);
-      double sb = sin(rot2);
-      double cc = cos(rot3);
-      double sc = sin(rot3);      
+      double ca = cos(rot1());
+      double sa = sin(rot1());
+      double cb = cos(rot2());
+      double sb = sin(rot2());
+      double cc = cos(rot3());
+      double sc = sin(rot3());      
       gsl_matrix_set(Q, 0, 0, ca*cc - cb*sa*sc);
       gsl_matrix_set(Q, 0, 1, cc*sa + ca*cb*sc);
       gsl_matrix_set(Q, 0, 2, sb*sc);
@@ -148,66 +284,144 @@ namespace Problem {
       gsl_matrix_set(Q, 2, 2, cb);
 
       gsl_vector *c = gsl_vector_alloc(3);
-      gsl_vector_set(c, 0, cx);
-      gsl_vector_set(c, 0, cy);
-      gsl_vector_set(c, 0, cz);
+      gsl_vector_set(c, 0, cx());
+      gsl_vector_set(c, 0, cy());
+      gsl_vector_set(c, 0, cz());
 
-      logLik += datasetLogLik(obs, L, lambda, Q, c, sdR, sdZ);
-      logLik += priors();
+      double logLik = datasetLogLik(observations, L(), lambda, Q, c, sdR(), sdZ());
 
       gsl_vector_free(c);
       gsl_matrix_free(Q);
       gsl_vector_free(lambda);
-      
+
       return logLik;
-    } else {
-      return -INFINITY;
-    }
   }
 
   double
-  State::priors() {
-    double logLik = 0;
+  Estimate::computePriorQ () {
+    double logPrior = 0;
 
-    // Rotations
     const double ROT_SD = M_PI/8;
-    logLik += log(gsl_ran_gaussian_pdf(rot1, ROT_SD));
-    logLik += log(gsl_ran_gaussian_pdf(abs(rot2), ROT_SD/2));
-    logLik += log(gsl_ran_gaussian_pdf(rot3, ROT_SD));
+    logPrior += log(gsl_ran_gaussian_pdf(rot1(), ROT_SD));
+    logPrior += log(gsl_ran_gaussian_pdf(abs(rot2()), ROT_SD/2));
+    logPrior += log(gsl_ran_gaussian_pdf(rot3(), ROT_SD));
 
-    // Axes
-    const double AXES_MU = 1750;
-    const double AXES_SD = 500;
-    logLik += log(gsl_ran_gaussian_pdf(A - AXES_MU, AXES_SD));
-    logLik += log(gsl_ran_gaussian_pdf(B - AXES_MU, AXES_SD));
-    logLik += log(gsl_ran_gaussian_pdf(C - AXES_MU, AXES_SD));
-
-    // Measurement error
-    logLik -= log(sdR);
-    logLik -= log(sdZ);
-
-    // Shift
-    logLik += log(gsl_ran_gaussian_pdf(cx, sqrt(sdCx)));
-    logLik += log(gsl_ran_gaussian_pdf(cy, sqrt(sdCy)));
-    logLik += log(gsl_ran_gaussian_pdf(cz, sqrt(sdCz)));
-
-    // Shift variance
-    logLik -= log(sdCx);
-    logLik -= log(sdCy);
-    logLik -= log(sdCz);
-
-    // L
-    logLik += log(gsl_ran_gaussian_pdf(L - muL, sdL));
-    logLik += log(gsl_ran_gaussian_pdf(muL - 30400, 1500));
-    logLik -= log(sdL);
-
-    return logLik;
+    return logPrior;
   }
 
+  double
+  Estimate::computePriorLambda () {
+    double logPrior = 0;
+
+    const double AXES_MU = 1750;
+    const double AXES_SD = 500;
+    logPrior += log(gsl_ran_gaussian_pdf(A() - AXES_MU, AXES_SD));
+    logPrior += log(gsl_ran_gaussian_pdf(B() - AXES_MU, AXES_SD));
+    logPrior += log(gsl_ran_gaussian_pdf(C() - AXES_MU, AXES_SD));
+    return logPrior;
+  }
+
+  double
+  Estimate::computePriorErr () {
+    double logPrior = 0;
+
+    logPrior -= log(sdR());
+    logPrior -= log(sdZ());
+    return logPrior;
+  }
+
+  double
+  Estimate::computePriorC () {
+    double logPrior = 0;
+
+    logPrior += log(gsl_ran_gaussian_pdf(cx(), sqrt(sdCx())));
+    logPrior += log(gsl_ran_gaussian_pdf(cy(), sqrt(sdCy())));
+    logPrior += log(gsl_ran_gaussian_pdf(cz(), sqrt(sdCz())));
+
+    return logPrior;
+  }
+
+  double
+  Estimate::computePriorCErr () {
+    double logPrior = 0;
+
+    logPrior -= log(sdCx());
+    logPrior -= log(sdCy());
+    logPrior -= log(sdCz());
+
+    return logPrior;
+  }
+
+  double
+  Estimate::computePriorL () {
+    return log(gsl_ran_gaussian_pdf(L() - 30400, 1500));
+  }
+  
+  double
+  Estimate::datasetLogLik(Observations *obs,
+                          const double L,
+                          const gsl_vector *lambda,
+                          const gsl_matrix *Q,
+                          const gsl_vector *c,
+                          const double sdR,
+                          const double sdZ) {
+    size_t N = obs->N;
+    size_t D = obs->D;
+
+    Random *R = new Random();
+    
+    double aveLogLik = 0;
+    gsl_vector *uvw    = gsl_vector_alloc(D);
+    gsl_vector *ytmp   = gsl_vector_alloc(D);
+    gsl_vector *ob     = gsl_vector_alloc(D);
+
+    /* Bootstrap with replacement NSAMPLES samples from the
+       observation matrix to find an estimate for the average logLik
+       then scale it by N/NSAMPLES to get an estimate for the total
+       logLik of the dataset.
+
+       This introduces the possibility of instability of the estimate,
+       but so long as NSAMPLES is suitable large (TODO: determine how
+       large it must be) this should converge well.
+
+       Additionally, if any of the computations fail to converge for
+       any reason, do not include them in the sample. I believe this
+       will eliminate points that are "near" any of the orthogonal
+       planes in the system but I believe "near" must mean
+       "numerically zero" and therefore with eyes around 3mm in
+       diameter the majority of the points should be included in the
+       sampling population.
+
+       TODO: check above assumption.
+    */
+
+    size_t nchosen = 0;
+    do {
+      nchosen++;
+
+      // Get a random observation
+      obs->writeObservation(R->drawUniformIndex(N), ob);     
+
+      // Try to find the likelihood, but if it fails forget about it.
+      try {
+      aveLogLik +=
+        _observationLogLik(ob, lambda, Q, c, sdR, sdZ, uvw, ytmp);
+      } catch(int) { nchosen--; }
+      
+    }
+    while (nchosen < NSAMPLES);
+
+    gsl_vector_free(ob);
+    gsl_vector_free(ytmp);
+    gsl_vector_free(uvw);
+    delete R;
+    
+    return exp(log(N) - log(NSAMPLES))*aveLogLik;
+  }
 
   double 
-  findT(const double a, const double b, const double c,
-        const double u, const double v, const double w) {
+  Estimate::findT(const double a, const double b, const double c,
+                  const double u, const double v, const double w) {
     
     /* We're looking for the largest root of F(t),
        
@@ -294,8 +508,8 @@ namespace Problem {
   }
   
   void
-  computeDelta(const double a, const double b, const double c,
-               const double u, const double v, const double w,
+  Estimate::computeDelta(const double a, const double b, const double c,
+                         const double u, const double v, const double w,
                gsl_vector *out) {
     
     double t = findT(a, b, c, u, v, w);
@@ -306,10 +520,10 @@ namespace Problem {
   }
   
   double
-  ellipsoidLogPdf(const double a, const double b, const double c,
-                  const double u, const double v, const double w,
-                  const double sdR, 
-                  const double sdZ) {
+  Estimate::ellipsoidLogPdf(const double a, const double b, const double c,
+                            const double u, const double v, const double w,
+                            const double sdR, 
+                            const double sdZ) {
     
     gsl_vector *diff = gsl_vector_alloc(3);
     computeDelta(a, b, c, u, v, w, diff);
@@ -325,12 +539,12 @@ namespace Problem {
   }
   
   double
-  observationLogLik(const gsl_vector *ob,
-                   const gsl_vector *lambda,
-                   const gsl_matrix *Q,
-                   const gsl_vector *c,
-                   const double sdR,
-                   const double sdZ) {
+  Estimate::observationLogLik(const gsl_vector *ob,
+                              const gsl_vector *lambda,
+                              const gsl_matrix *Q,
+                              const gsl_vector *c,
+                              const double sdR,
+                              const double sdZ) {
 
     size_t D = ob->size;
     
@@ -347,14 +561,14 @@ namespace Problem {
   } 
   
   double
-  _observationLogLik(const gsl_vector *ob,
-                    const gsl_vector *lambda,
-                    const gsl_matrix *Q,
-                    const gsl_vector *c,
-                    const double sdR,
-                    const double sdZ,
-                    gsl_vector *uvw,
-                    gsl_vector *ytmp) {
+  Estimate::_observationLogLik(const gsl_vector *ob,
+                               const gsl_vector *lambda,
+                               const gsl_matrix *Q,
+                               const gsl_vector *c,
+                               const double sdR,
+                               const double sdZ,
+                               gsl_vector *uvw,
+                               gsl_vector *ytmp) {
     
     // !! These are some of the more expensive operations
     // Shift and rotate to the eigenspace
@@ -378,66 +592,130 @@ namespace Problem {
                       gsl_vector_get(uvw, 2),              // w
                       sdR, sdZ);
   }
-  
-  double
-  datasetLogLik(Observations *obs,
-                const double L,
-                const gsl_vector *lambda,
-                const gsl_matrix *Q,
-                const gsl_vector *c,
-                const double sdR,
-                const double sdZ) {
-    size_t N = obs->N;
-    size_t D = obs->D;
 
-    Random *R = new Random();
-    
-    double aveLogLik = 0;
-    gsl_vector *uvw    = gsl_vector_alloc(D);
-    gsl_vector *ytmp   = gsl_vector_alloc(D);
-    gsl_vector *ob     = gsl_vector_alloc(D);
-
-    /* Bootstrap with replacement NSAMPLES samples from the
-       observation matrix to find an estimate for the average logLik
-       then scale it by N/NSAMPLES to get an estimate for the total
-       logLik of the dataset.
-
-       This introduces the possibility of instability of the estimate,
-       but so long as NSAMPLES is suitable large (TODO: determine how
-       large it must be) this should converge well.
-
-       Additionally, if any of the computations fail to converge for
-       any reason, do not include them in the sample. I believe this
-       will eliminate points that are "near" any of the orthogonal
-       planes in the system but I believe "near" must mean
-       "numerically zero" and therefore with eyes around 3mm in
-       diameter the majority of the points should be included in the
-       sampling population.
-
-       TODO: check above assumption.
-    */
-
-    size_t nchosen = 0;
-    do {
-      nchosen++;
-
-      // Get a random observation
-      obs->writeObservation(R->drawUniformIndex(N), ob);     
-
-      // Try to find the likelihood, but if it fails forget about it.
-      try {
-      aveLogLik +=
-        _observationLogLik(ob, lambda, Q, c, sdR, sdZ, uvw, ytmp);
-      } catch(int) { nchosen--; }
-      
-    }
-    while (nchosen < NSAMPLES);
-
-    gsl_vector_free(ob);
-    gsl_vector_free(ytmp);
-    gsl_vector_free(uvw);
-    delete R;
-    
-    return exp(log(N) - log(NSAMPLES))*aveLogLik;
+  gsl_vector *view_ell(const Estimate *st) {
+    gsl_vector *out = gsl_vector_alloc(1);
+    gsl_vector_set(out, 0, st->L());
+    return out;
   }
+  
+  gsl_vector *view_lambda(const Estimate *st) {
+    gsl_vector *out = gsl_vector_alloc(3);
+    gsl_vector_set(out, 0, st->A());
+    gsl_vector_set(out, 1, st->B());
+    gsl_vector_set(out, 2, st->C());
+    return out;
+  }
+  
+  gsl_vector *view_rot(const Estimate *st) {
+    gsl_vector *out = gsl_vector_alloc(3);
+    gsl_vector_set(out, 0, st->rot1());
+    gsl_vector_set(out, 1, st->rot2());
+    gsl_vector_set(out, 2, st->rot3());
+    return out;
+  }
+  
+  gsl_vector *view_shift(const Estimate *st) {
+    gsl_vector *out = gsl_vector_alloc(3);
+    gsl_vector_set(out, 0, st->cx());
+    gsl_vector_set(out, 1, st->cy());
+    gsl_vector_set(out, 2, st->cz());
+    return out;
+  }
+  
+  gsl_vector *view_cerr(const Estimate *st) {
+    gsl_vector *out = gsl_vector_alloc(3);
+    gsl_vector_set(out, 0, st->sdCx());
+    gsl_vector_set(out, 1, st->sdCy());
+    gsl_vector_set(out, 2, st->sdCz());
+    return out;
+  }
+  
+  gsl_vector *view_err(const Estimate *st) {
+    gsl_vector *out = gsl_vector_alloc(2);
+    gsl_vector_set(out, 0, st->sdR());
+    gsl_vector_set(out, 1, st->sdZ());
+    return out;
+  }
+  
+  void update_ell(const gsl_vector * vec, Estimate *st) {
+    st->L(gsl_vector_get(vec, 0));
+  }
+  
+  void update_lambda(const gsl_vector * vec, Estimate *st) {
+    st->A(gsl_vector_get(vec, 0));
+    st->B(gsl_vector_get(vec, 1));
+    st->C(gsl_vector_get(vec, 2));
+  }
+  
+  void update_rot(const gsl_vector * vec, Estimate *st) {
+    st->rot1(gsl_vector_get(vec, 0));
+    st->rot2(gsl_vector_get(vec, 1));
+    st->rot3(gsl_vector_get(vec, 2));
+  }
+  
+  void update_shift(const gsl_vector * vec, Estimate *st) {
+    st->cx(gsl_vector_get(vec, 0));
+    st->cy(gsl_vector_get(vec, 1));
+    st->cz(gsl_vector_get(vec, 2));
+  }
+  
+  void update_cerr(const gsl_vector * vec, Estimate *st) {
+    st->sdCx(gsl_vector_get(vec, 0));
+    st->sdCy(gsl_vector_get(vec, 1));
+    st->sdCz(gsl_vector_get(vec, 2));
+  }
+  
+  void update_err(const gsl_vector * vec, Estimate *st) {
+    st->sdR(gsl_vector_get(vec, 0));
+    st->sdZ(gsl_vector_get(vec, 1));
+  }
+    
+  // TODO: Update this to truly random initialization.
+  
+  gsl_vector *guess0_ell() {
+    gsl_vector *init = gsl_vector_alloc(1);
+    gsl_vector_set(init, 0, 30.4);
+    return init;
+  }
+  
+  gsl_vector *guess0_lambda() {
+    gsl_vector *init = gsl_vector_alloc(3);
+    gsl_vector_set(init, 0, 1.75);
+    gsl_vector_set(init, 1, 1.75);
+    gsl_vector_set(init, 2, 1.75);
+    return init;
+  }
+  
+  gsl_vector *guess0_rot() {
+    gsl_vector *init = gsl_vector_alloc(3);
+    gsl_vector_set(init, 0, 0);
+    gsl_vector_set(init, 1, 0);
+    gsl_vector_set(init, 2, 0);
+    return init;
+  }
+  
+  gsl_vector *guess0_shift() {
+    gsl_vector *init = gsl_vector_alloc(3);
+    gsl_vector_set(init, 0, 0);
+    gsl_vector_set(init, 1, 0);
+    gsl_vector_set(init, 2, 0);
+    return init;
+  }
+  
+  gsl_vector *guess0_cerr() {
+    gsl_vector *init = gsl_vector_alloc(3);
+    gsl_vector_set(init, 0, 1000.0);
+    gsl_vector_set(init, 1, 1000.0);
+    gsl_vector_set(init, 2, 1000.0);
+    return init;
+  }
+  
+  gsl_vector *guess0_err() {
+    gsl_vector *init = gsl_vector_alloc(2);
+    gsl_vector_set(init, 0, 100.0);
+    gsl_vector_set(init, 1, 100.0);
+    return init;
+  }
+
 }

@@ -53,19 +53,13 @@ public:
     return true;
   }
 
-  /// Computes the log likelihood of the current state. Necessary for
-  /// Metropolis jumps.
-  virtual double logLik () = 0;
-
-  /// `repair` gives a state a chance to recalculate any internal
-  /// variables after some outward facing ones have been updated during
-  /// a jump. This MUST be called after any atomic update operation to
-  /// ensure that the internal state is consistent.
-  virtual void repair () = 0;
+  /// Computes the log posterior probability of the current
+  /// state. Necessary for Metropolis jumps.
+  virtual double logPost () = 0;
 
   /// Serialize the state into a gsl_vector (length D) so that it can
   /// be stored in a matrix tracking the state's progression.
-  virtual void pickle (gsl_vector *out) = 0;
+  virtual void pickle (gsl_vector *out) const = 0;
 
   /// Deserialize a pickled gsl_vector (length D) by fully
   /// initializing the current state with its values.
@@ -75,7 +69,7 @@ public:
 
 // The two interface function types.
 typedef gsl_vector *(*view_f)(const State *);
-typedef int         (*update_f)(const gsl_vector *, State *);
+typedef void        (*update_f)(const gsl_vector *, State *);
 
 /// A function that creates a random initial guess vector in order to
 /// have the sampler initialize some part of the state. Output vector

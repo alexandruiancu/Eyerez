@@ -62,6 +62,11 @@ Chain::step () {
   }
 }
 
+bool
+Chain::isDone () {
+  return (n_curr >= N_total);
+}
+
 void 
 Chain::storeState (State *x) {
   gsl_vector_view v = gsl_matrix_row(samples, n_curr);
