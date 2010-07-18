@@ -43,9 +43,11 @@ Metropolis::Metropolis (size_t D,
 }
 
 void
-Metropolis::init (size_t D,
+Metropolis::init (size_t D_in,
                   view_f view, update_f update, init_f guess0,
                   const double sigma) {
+
+  D = D_in;
 
   // Initialize some support objects
   R = new Random ();

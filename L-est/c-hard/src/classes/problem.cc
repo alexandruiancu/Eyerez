@@ -18,12 +18,7 @@ namespace MyUtilities {
   
   double 
   parameter::operator() () const {
-    if (initialized) {
-      return self;
-    } else {
-      fprintf(stderr, "Accessed uninitialized State parameter!\n");
-      throw 0;
-    }
+    return self;
   }
  
   void 
@@ -53,6 +48,7 @@ namespace MyUtilities {
 namespace LEst {
   Estimate::Estimate (Observations *obs_in) {
     observations = obs_in;
+    D = 15;
   }
 
   Estimate::~Estimate () {
@@ -593,128 +589,158 @@ namespace LEst {
                       sdR, sdZ);
   }
 
-  gsl_vector *view_ell(const Estimate *st) {
+  gsl_vector *view_ell(const State *st) {
+    Estimate *est = (Estimate *)st;
     gsl_vector *out = gsl_vector_alloc(1);
-    gsl_vector_set(out, 0, st->L());
+    gsl_vector_set(out, 0, est->L());
     return out;
   }
   
-  gsl_vector *view_lambda(const Estimate *st) {
+  gsl_vector *view_lambda(const State *st) {
+    Estimate *est = (Estimate *)st;
     gsl_vector *out = gsl_vector_alloc(3);
-    gsl_vector_set(out, 0, st->A());
-    gsl_vector_set(out, 1, st->B());
-    gsl_vector_set(out, 2, st->C());
+    gsl_vector_set(out, 0, est->A());
+    gsl_vector_set(out, 1, est->B());
+    gsl_vector_set(out, 2, est->C());
     return out;
   }
   
-  gsl_vector *view_rot(const Estimate *st) {
+  gsl_vector *view_rot(const State *st) {
+    Estimate *est = (Estimate *)st;
     gsl_vector *out = gsl_vector_alloc(3);
-    gsl_vector_set(out, 0, st->rot1());
-    gsl_vector_set(out, 1, st->rot2());
-    gsl_vector_set(out, 2, st->rot3());
+    gsl_vector_set(out, 0, est->rot1());
+    gsl_vector_set(out, 1, est->rot2());
+    gsl_vector_set(out, 2, est->rot3());
     return out;
   }
   
-  gsl_vector *view_shift(const Estimate *st) {
+  gsl_vector *view_shift(const State *st) {
+    Estimate *est = (Estimate *)st;
     gsl_vector *out = gsl_vector_alloc(3);
-    gsl_vector_set(out, 0, st->cx());
-    gsl_vector_set(out, 1, st->cy());
-    gsl_vector_set(out, 2, st->cz());
+    gsl_vector_set(out, 0, est->cx());
+    gsl_vector_set(out, 1, est->cy());
+    gsl_vector_set(out, 2, est->cz());
     return out;
   }
   
-  gsl_vector *view_cerr(const Estimate *st) {
+  gsl_vector *view_cerr(const State *st) {
+    Estimate *est = (Estimate *)st;
     gsl_vector *out = gsl_vector_alloc(3);
-    gsl_vector_set(out, 0, st->sdCx());
-    gsl_vector_set(out, 1, st->sdCy());
-    gsl_vector_set(out, 2, st->sdCz());
+    gsl_vector_set(out, 0, est->sdCx());
+    gsl_vector_set(out, 1, est->sdCy());
+    gsl_vector_set(out, 2, est->sdCz());
     return out;
   }
   
-  gsl_vector *view_err(const Estimate *st) {
+  gsl_vector *view_err(const State *st) {
+    Estimate *est = (Estimate *)st;
     gsl_vector *out = gsl_vector_alloc(2);
-    gsl_vector_set(out, 0, st->sdR());
-    gsl_vector_set(out, 1, st->sdZ());
+    gsl_vector_set(out, 0, est->sdR());
+    gsl_vector_set(out, 1, est->sdZ());
     return out;
   }
   
-  void update_ell(const gsl_vector * vec, Estimate *st) {
-    st->L(gsl_vector_get(vec, 0));
+  void update_ell(const gsl_vector * vec, State *st) {
+    Estimate *est = (Estimate *)st;
+    est->L(gsl_vector_get(vec, 0));
   }
   
-  void update_lambda(const gsl_vector * vec, Estimate *st) {
-    st->A(gsl_vector_get(vec, 0));
-    st->B(gsl_vector_get(vec, 1));
-    st->C(gsl_vector_get(vec, 2));
+  void update_lambda(const gsl_vector * vec, State *st) {
+    Estimate *est = (Estimate *)st;
+    est->A(gsl_vector_get(vec, 0));
+    est->B(gsl_vector_get(vec, 1));
+    est->C(gsl_vector_get(vec, 2));
   }
   
-  void update_rot(const gsl_vector * vec, Estimate *st) {
-    st->rot1(gsl_vector_get(vec, 0));
-    st->rot2(gsl_vector_get(vec, 1));
-    st->rot3(gsl_vector_get(vec, 2));
+  void update_rot(const gsl_vector * vec, State *st) {
+    Estimate *est = (Estimate *)st;
+    est->rot1(gsl_vector_get(vec, 0));
+    est->rot2(gsl_vector_get(vec, 1));
+    est->rot3(gsl_vector_get(vec, 2));
   }
   
-  void update_shift(const gsl_vector * vec, Estimate *st) {
-    st->cx(gsl_vector_get(vec, 0));
-    st->cy(gsl_vector_get(vec, 1));
-    st->cz(gsl_vector_get(vec, 2));
+  void update_shift(const gsl_vector * vec, State *st) {
+    Estimate *est = (Estimate *)st;
+    est->cx(gsl_vector_get(vec, 0));
+    est->cy(gsl_vector_get(vec, 1));
+    est->cz(gsl_vector_get(vec, 2));
   }
   
-  void update_cerr(const gsl_vector * vec, Estimate *st) {
-    st->sdCx(gsl_vector_get(vec, 0));
-    st->sdCy(gsl_vector_get(vec, 1));
-    st->sdCz(gsl_vector_get(vec, 2));
+  void update_cerr(const gsl_vector * vec, State *st) {
+    Estimate *est = (Estimate *)st;
+    est->sdCx(gsl_vector_get(vec, 0));
+    est->sdCy(gsl_vector_get(vec, 1));
+    est->sdCz(gsl_vector_get(vec, 2));
   }
   
-  void update_err(const gsl_vector * vec, Estimate *st) {
-    st->sdR(gsl_vector_get(vec, 0));
-    st->sdZ(gsl_vector_get(vec, 1));
+  void update_err(const gsl_vector * vec, State *st) {
+    Estimate *est = (Estimate *)st;
+    est->sdR(gsl_vector_get(vec, 0));
+    est->sdZ(gsl_vector_get(vec, 1));
   }
     
   // TODO: Update this to truly random initialization.
   
   gsl_vector *guess0_ell() {
+    Random *r = new Random();
     gsl_vector *init = gsl_vector_alloc(1);
-    gsl_vector_set(init, 0, 30.4);
+    gsl_vector_set(init, 0, r->drawGaussian(30400, 1000));
+
+    delete r;
     return init;
   }
   
   gsl_vector *guess0_lambda() {
+    Random *r = new Random();
     gsl_vector *init = gsl_vector_alloc(3);
-    gsl_vector_set(init, 0, 1.75);
-    gsl_vector_set(init, 1, 1.75);
-    gsl_vector_set(init, 2, 1.75);
+    gsl_vector_set(init, 0, r->drawGaussian(1750, 250));
+    gsl_vector_set(init, 1, r->drawGaussian(1750, 250));
+    gsl_vector_set(init, 2, r->drawGaussian(1750, 250));
+
+    delete r;
     return init;
   }
   
   gsl_vector *guess0_rot() {
+    Random *r = new Random();
     gsl_vector *init = gsl_vector_alloc(3);
-    gsl_vector_set(init, 0, 0);
-    gsl_vector_set(init, 1, 0);
-    gsl_vector_set(init, 2, 0);
+    gsl_vector_set(init, 0, 0.001);
+    gsl_vector_set(init, 1, 0.001);
+    gsl_vector_set(init, 2, 0.001);
+
+    delete r;
     return init;
   }
   
   gsl_vector *guess0_shift() {
+    Random *r = new Random();
     gsl_vector *init = gsl_vector_alloc(3);
-    gsl_vector_set(init, 0, 0);
-    gsl_vector_set(init, 1, 0);
-    gsl_vector_set(init, 2, 0);
+    gsl_vector_set(init, 0, r->drawGaussian(0, 1000));
+    gsl_vector_set(init, 1, r->drawGaussian(0, 1000));
+    gsl_vector_set(init, 2, r->drawGaussian(0, 1000));
+
+    delete r;
     return init;
   }
   
   gsl_vector *guess0_cerr() {
+    Random *r = new Random();
     gsl_vector *init = gsl_vector_alloc(3);
-    gsl_vector_set(init, 0, 1000.0);
-    gsl_vector_set(init, 1, 1000.0);
-    gsl_vector_set(init, 2, 1000.0);
+    gsl_vector_set(init, 0, r->drawGaussian(1000.0, 200.0));
+    gsl_vector_set(init, 1, r->drawGaussian(1000.0, 200.0));
+    gsl_vector_set(init, 2, r->drawGaussian(1000.0, 200.0));
+
+    delete r;
     return init;
   }
   
   gsl_vector *guess0_err() {
+    Random *r = new Random();
     gsl_vector *init = gsl_vector_alloc(2);
-    gsl_vector_set(init, 0, 100.0);
-    gsl_vector_set(init, 1, 100.0);
+    gsl_vector_set(init, 0, r->drawGaussian(100.0, 20.0));
+    gsl_vector_set(init, 1, r->drawGaussian(100.0, 20.0));
+
+    delete r;
     return init;
   }
 

@@ -167,19 +167,19 @@ namespace LEst {
     void unpickle (const gsl_vector *in);
   };
 
-  gsl_vector *view_ell(const Estimate *);
-  gsl_vector *view_lambda(const Estimate *);
-  gsl_vector *view_rot(const Estimate *);
-  gsl_vector *view_shift(const Estimate *);
-  gsl_vector *view_cerr(const Estimate *);
-  gsl_vector *view_err(const Estimate *);
+  gsl_vector *view_ell(const State *);
+  gsl_vector *view_lambda(const State *);
+  gsl_vector *view_rot(const State *);
+  gsl_vector *view_shift(const State *);
+  gsl_vector *view_cerr(const State *);
+  gsl_vector *view_err(const State *);
 
-  void update_ell(const gsl_vector *, Estimate *);
-  void update_lambda(const gsl_vector *, Estimate *);
-  void update_rot(const gsl_vector *, Estimate *);
-  void update_shift(const gsl_vector *, Estimate *);
-  void update_cerr(const gsl_vector *, Estimate *);
-  void update_err(const gsl_vector *, Estimate *);
+  void update_ell(const gsl_vector *, State *);
+  void update_lambda(const gsl_vector *, State *);
+  void update_rot(const gsl_vector *, State *);
+  void update_shift(const gsl_vector *, State *);
+  void update_cerr(const gsl_vector *, State *);
+  void update_err(const gsl_vector *, State *);
 
   gsl_vector *guess0_ell();
   gsl_vector *guess0_lambda();

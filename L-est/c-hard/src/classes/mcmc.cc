@@ -18,12 +18,12 @@ MCMC::MCMC (Sampler *samp, State *st,
   // Initialize some things
   chainpool.reserve(5);
   for (size_t i = 0; i < nchains; i++) {
+    samp->initState(st);
     Sampler *samp_c = samp->clone();
     State *st_c     = st->clone();
     Chain *c = new Chain(samp_c, st_c, nadapt, nchainsamples);
     chainpool.push_back(c);
   }
-
 
   // Cycle through each chain performing updates.
   const size_t BLOCKSIZE = 100;
@@ -38,6 +38,7 @@ MCMC::MCMC (Sampler *samp, State *st,
 
 }
 
+// TODO: Bus error!
 gsl_matrix *
 MCMC::copyAllSamples () {
   gsl_matrix *out = gsl_matrix_alloc(nsamples, D);

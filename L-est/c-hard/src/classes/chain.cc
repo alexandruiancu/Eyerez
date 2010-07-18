@@ -1,5 +1,7 @@
 #include <classes/chain.hpp>
 
+#include <stdio.h>
+
 #include <classes/state.hpp>
 #include <classes/sampler.hpp>
 
@@ -31,40 +33,52 @@ Chain::newOutput (const size_t nposterior) {
 
 void
 Chain::initOutput (const size_t nposterior) {
-  N_total = st->D;
+  size_t D = st->D;
   n_curr = 0;
-  samples = gsl_matrix_alloc(nposterior, N_total);
+  samples = gsl_matrix_alloc(nposterior, D);
 }
 
 void
 Chain::run (const size_t niter) {
+  if (!st->isFullyInitialized()) {
+    samp->initState(st);
+  }
   for (size_t i = 0; i < niter; i++) {
     step();
+    if (isDone()) { break; }
   }
 }
 
 void
 Chain::step () {
+  if (!st->isFullyInitialized()) {
+    fprintf(stderr, "State is not fully initialized: failing...\n");
+    throw;
+  }
+
   if (!samp->isFrozen() && to_adapt > 0) {
     // We're in adaptive mode.
+    fprintf(stderr, "a");
     samp->jump(st);
     to_adapt--;
 
   } else if (!samp->isFrozen()) {
     // We should start attempting to freeze it.
+    fprintf(stderr, "f");
     samp->freeze();
     samp->jump(st);
     
   } else {
     // It's totally frozen. Now samples should be stored.
+    fprintf(stderr, "+");
     samp->jump(st);
-
+    storeState(st);
   }
 }
 
 bool
 Chain::isDone () {
-  return (n_curr >= N_total);
+  return (n_curr >= samples->size1);
 }
 
 void 

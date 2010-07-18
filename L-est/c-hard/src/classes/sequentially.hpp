@@ -12,6 +12,7 @@ typedef std::vector <Sampler *> samp_vec;
 
 class Sequentially : public Sampler {
 
+public:
   /// The vector of constituent samplers.
   samp_vec samplers;
   
@@ -33,6 +34,9 @@ class Sequentially : public Sampler {
   /// Running through the samplers vector, jump the state in each
   /// sampler then return.
   void jump (State *);
+
+  /// Call freeze on every constituent sampler.
+  void freeze ();
 
   /// The union of the `isFrozen` states of each constituent sampler.
   bool isFrozen ();
