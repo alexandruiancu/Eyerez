@@ -1,5 +1,6 @@
 \ProvidesPackage{mysty}
 \usepackage{amsmath}
+\usepackage{amsfonts}
 \usepackage{verbatim}
 \usepackage{tikz} 
 \usepackage{calc}
@@ -7,6 +8,7 @@
 \usepackage{subfig}
 \usepackage{siunitx}
 \usepackage{setspace}
+\usepackage{paralist}
 %\usepackage{fancyhdr}
 \usepackage[comma]{natbib}
 \usepackage{booktabs}
@@ -17,6 +19,8 @@
 \setcitestyle{super,open=,close=}
 \clubpenalty = 10000
 \widowpenalty = 10000
+
+\renewcommand\includegraphics[1][1]{}
 
 \def\mathclap#1{\text{\hbox to 0pt{\hss$\mathsurround=0pt#1$\hss}}}
 \newcommand{\figcaption}[1]{\caption{\small{#1}}}

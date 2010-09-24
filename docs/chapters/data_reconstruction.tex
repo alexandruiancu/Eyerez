@@ -1,53 +1,373 @@
 
+Each measurement from the Eyerez system is a column vector $
+\mathbf{x}_{n} \in \mathbb{R}^{4}$ which is indexed in time
+discretized by the sampling period, $n : t = T_{s} n$, and includes
+the immediate values
+
+\begin{itemize}
+\item $d^{u}$, the distance measured from the upper laser
+\item $d^{l}$, the distance measured from the lower laser
+\item $z$, the linear encoder value relative to some initial point
+\item $\theta$, the rotary encoder value
+\end{itemize}
+
+Contained within these values are two correlated images of the
+measured item encoded linearly into the space of this vector. The
+primary goals of data reconstruction are
+\begin{inparaenum}[\itshape (a) \upshape]
+\item reconstructing the object's image in a sensible, useful
+  coordinate space and
+\item abusing properties of the data to reduce noise.
+\end{inparaenum}
+
+Each of these goals are served through understanding better the
+geometry of the measurement system and the effects of possible
+perturbations from that geometry while creating techniques to estimate
+the exact geometry of the system before and during each measurement.
+
+\section{Overview}
+\label{sec:registration-overview}
+
+If $\mathbf{x}_{n}$ is a 4-dimensional column vector representing the
+state of the Eyerez system during measurement $n$, the collection of
+these $(\mathbf{x}_{n})_{n \leq N}$ contains information on each
+laser's image of the object which can together be used to produce a
+better overall estimate for the object's shape. To do this, several
+steps are involved:
+
+\begin{enumerate}
+\item Conversion of each image to a common space for comparison
+\item Comparative noise reduction on the two images
+\item Combination of images to one complete image
+\item Conversion of the denoised, complete image to a space useful for further
+  analysis (cylindrical coordinate space)
+\end{enumerate}
+
+Each conversion method is a linear operator on $\mathbf{x}_{n}$
+dependent on the exact geometry of the device during measurement
+(which is currently assumed constant within each measurement
+proces). Their construction and analysis is considered in section
+\ref{sec:space-registration}. 
+
+The noise reduction is based on the idea during perfect operation
+($H_{0}$) the images measured by each laser, denoted $U_{n}$ and
+$L_{n}$ across a circular index $\{n\mod N\}$, should be completely
+uncorrelated since each laser measures a completely different part of
+the object at a given time. However, if the object moves during
+measurement then at that point there will be high correlation between
+the two images that can be measured and removed. That noise reduction
+is not yet implemented.
+
+Finally, the combination step involves finding the time lag $\Delta n$
+such that the correlation between the images $U_{n}$ and $L_{n+\Delta
+  n}$ is maximized allowing the two to be combined so that the high
+and low latitude data is well-covered as would be impossible in a
+single-laser configuration.
+
 \section{Space registration}
 \label{sec:space-registration}
 
-The data produced by each laser in the Eyerez system must be
-registered to real space coordinates before being useful as a
-representation of the part scanned. This registration is further
-hampered by the fact that the exact position of each laser in space is
-not completely known and must be computed. Finally, the parameter $L$
-from Figure \ref{fig:ideal-laser-geometry}, must be measured
-independently using a part with a known configuration.
+The observed data vector $\mathbf{x}_{n}$ can be consider the
+combination of two other vectors $\mathbf{x}^{u}_{n} = (d^{u} z
+\theta)^{T}$ and $\mathbf{x}^{l}_{n} = (d^{l} z \theta)^{T}$ such that
+the represent the object as seen by the upper and lower laser
+respectively. Space registration thus seeks to find linear operators
+$\mathbf{T}_{u}$ and $\mathbf{T}_{l}$ that send each laser's
+observation space to a simply interpreted space, such as cylindrical
+coordinates. Additionally, assuming invertibility, to create the
+``swing-up'' and ``swing-down'' operators $\mathbf{T}_{ul}$ and
+$\mathbf{T}_{lu} = \mathbf{T}_{ul}^{-1}$ which allow for easier
+comparison of the two images with less dependence on the geometry of
+the system.
+
+After these operators are found for ideal geometries they can be used
+to better understand how to predict the true operators after
+calibration of the system where a small perturbation from the ideal
+values is assumed and we are interested in calculating it's value.
 
 \subsection{The basic model: single, orthogonal laser}
 \label{sec:basic-model:orthogonal}
 
-A single laser that is scanning at a right angle from the rotational
-axis of the eye produces data corresponding to the measured distance,
-the current $z$-position, and the current $\theta$-position. These
-triples $(d_{laser}, z_{laser}, \theta_{laser})$ exist in an inverted
-polar coordinate system that has been mirrored across the central axis
-(see Figure \ref{fig:ideal-laser-geometry}). Since the laser head is
-at a right angle to the rotation axis, however, conversion to real
-polar space $(r, z, \theta)$ is very easy given knowledge of the
-parameter $L$.
+The first, simple model is for a single orthogonal laser directed at a
+right angle to the rotational axis of the object. For this
+configuration, the input vector is slightly simpler than the general
+case, $\mathbf{x}_{n} = \left(d, z, \theta\right)$ and the only
+required operator is the transformation to a more conveient vector
+space. Considering figure \ref{fig:rld=layout} (\textit{left}) it is
+easy to construct a matrix which performs this operation
 
 \begin{align}
-  r &= L - d_{laser} \\
-  z &= z_{laser} \\
-  \theta &= \theta_{laser}
+  \mathbf{T}_{ortho}(L, \Delta z, \Delta \theta)\ \  \mathbf{x} &= \mathbf{y}_{cyl} \\
+  \left(
+    \begin{array}{cccc}
+      -1 & 0 & 0 & L             \\
+      0  & 1 & 0 & \Delta z      \\
+      0  & 0 & 1 & \Delta \theta \\
+      0  & 0 & 0 & 1             \\ 
+    \end{array}
+  \right)
+  \left(
+    \begin{array}{c}
+      d \\ z \\ \theta \\ 1
+    \end{array}
+  \right)
+  &=
+  \left(
+    \begin{array}{c}
+       L - d \\ z + \Delta z \\ \theta + \Delta\theta \\ 1
+    \end{array}
+  \right)
+  \equiv
+  \left(
+    \begin{array}{c}
+      \hat{r} \\ \hat{z} \\ \hat{\theta} \\ 1
+    \end{array}
+  \right)
 \end{align}
+
+Note the need to include a constant dimension in order to encode the
+whole transformation into this array. It is equivalent to a form like
+$\mathbf{T}_{ortho} \mathbf{x} + \mathbf{a}$.
+
+It's also important to note that the terms $\Delta z$ and
+$\Delta\theta$ are unimportant because for all practical purposes the
+images in cylindrical coordinates are the same under constant vertical
+shifts and rotations. For that reason, it is useful to simplify
+$\mathbf{T}_{ortho}(L) = \mathbf{T}_{ortho}(L, \Delta z,
+\Delta\theta)$ with no loss in generality.
 
 \begin{figure}
   \includegraphics[width=\linewidth]{images/rld-layout}
-  \caption{\textbf{The laser-measured coordinate space.} In an
-    orthogonal model, the laser measures the distance, $d$, to the
-    measured object. These measurements create images of the object in
-    a mirrored polar coordinate space (\textit{right}). Given the
-    structural parameter, $L$, the measurements can be converted back
-    to images in real space.}
-  \label{fig:ideal-laser-geometry}
+  \caption{\textbf{The laser-measured coordinate space for the single
+      laser configuration.} In an orthogonal model, the laser measures
+    the distance, $d$, to the measured object. These measurements
+    create images of the object in a ``mirrored cylindrical''
+    coordinate space (\textit{right}). Given the structural parameter,
+    $L$, the measurements can be converted back to images in real
+    space.}
+  \label{fig:rld-layout}
 \end{figure}
 
-\subsection{Two-laser registration}
-\label{sec:two-laser-registr}
+\subsubsection{Implications of the simple model}
+\label{sec:impl-simple-model}
 
-While the basic model suggests the importance of the structural
-parameter $L$, it fails to relate the full complexity of two-laser
-geometry. In reality, each laser is translated and rotated
+For this simpler configuration, the form of the transformation
+operator is very simple. It is dependent on exactly one unknown value
+$L$ which must be estimated during calibration in order to properly
+transform the data back into cylindrical coordinates. Additionally, we
+know value belief distributions for $L$ from the idealized geometry of
+the system and can consider the change in the operator given small
+perturbations of the system. In this case, it is easy to see that
+$\mathbf{T}_{ortho}(L)$ is not linear in $L$, but still has a simple
+decomposition into its ideal and perturbed components
+\begin{align}
+  \mathbf{T}_{ortho}(L + \delta L) &= \mathbf{P}_{ortho}(\delta
+  L)\mathbf{T}_{ortho}(L) \\
+  &= \left(I + \left(
+    \begin{array}{cccc}
+      0 & 0 & 0 & \delta L \\
+      0 & 0 & 0 & 0 \\
+      0 & 0 & 0 & 0 \\
+      0 & 0 & 0 & 0 \\
+    \end{array}
+  \right)\right) \mathbf{T}_{ortho}(L)
+\end{align}
 
+Thus, estimation of the geometric state of the system comes down to
+the estimation of $\mathbf{P}_{ortho}$ from which the image from the
+laser can be converted to a more usable coordinate space.
 
+\subsection{Two-laser configuration}
+\label{sec:two-laser-conf}
+
+The techniques of registration for a two-laser configuration are
+fundamentally the same form as the orthogonal laser; however, they are
+more complex and involve many more parameters.
+
+First we consider simply the upper laser. The laser impinges on the
+measured object at a lattitude higher than the equivalent
+orthogonal-laser system would and thus has a much more exotic
+geometry. To begin, consider the upper laser geometry from the side
+without an impinging object. At this point there is a right triangle
+formed between the plane informed by the actuator's value of $z$, the
+line of the laser, and a vertical line connecting the two. Calling the
+length of the diagonal line $H$, it's vertical component $A$, and
+knowing that the horizontal component should be the same $L$ from
+figure \ref{fig:ideal-laser-geometry}. Moreover, this geometry is
+further constrained by the knowledge that the length of the path of
+the laser light should optimally by 30mm, that the height of the laser
+body is $26$mm, which for further geometry will be marked $b$, that
+the height between the bottom, front corner of the laser body and the
+plane measured by $z$ is some height $h/2$, and finally that the laser
+is inclined from $0$ degrees in the orthogonal model to $\phi$ degrees
+below horizontal.
+
+Now, if an object is impinging on the laser beam, we have a new
+triangle geometrically similar to the one formed by $(A, H, L)$ where
+the laser beam is shortened from $30$ mm to the measured distance
+$d^{u}$. This informs a shortened hypotenuse $H'$, a shortened
+vertical component $A'$, and a shortened horizontal component which we
+are directly interested in called $d = L - r$. From the geometry of
+similar triangles we also know
+\begin{align}
+  \frac{A'}{A} = \frac{H'}{H} = \frac{d}{L}
+\end{align}
+
+and from the geometry of the system we know
+\begin{align}
+  L = H \cos\phi
+\end{align}
+
+from which we can create the operator to transform from the upper
+coordinate system to the cylindrical coordinate system via
+\begin{align}
+  \mathbf{T}_{u}(\phi, \Delta \theta)\ \  \mathbf{x} &= \mathbf{y}_{cyl} \\
+  \left(
+    \begin{array}{cccc}
+      \sin\phi  & 0 & 0 & 30 \sin\phi   \\
+      -\cos\phi & 1 & 0 & 30 \cos\phi   \\
+      0         & 0 & 1 & \Delta \theta \\
+      0         & 0 & 0 & 1             \\ 
+    \end{array}
+  \right)
+  \left(
+    \begin{array}{c}
+      d \\ z \\ \theta \\ 1
+    \end{array}
+  \right)
+  &=
+  \left(
+    \begin{array}{c}
+      \hat{r} \\ \hat{z} \\ \hat{\theta} \\ 1
+    \end{array}
+  \right)  
+\end{align}
+
+which may be noted has a strong similarity to a 2-dimensional rotation
+matrix. Also note that dependency on L vanishes but we introduce a new
+term $\Delta\theta$ which encompasses mismatch between the upper and
+lower laser's rotary position. This leaves 3 free parameters in this
+transform.
+
+The corresponding transform, $\mathbf{T}_{l}(\phi)$ differs from
+$\mathbf{T}_{u}(\phi, \Delta\theta)$ in that $\Delta\theta$ is set to
+0 by definition and $\mathbf{T}_{l}^{2,2} = -\mathbf{T}_{u}^{2,2}$
+representing that the lower laser measures points below the plane of
+$z$ instead of above.
+
+\subsubsection{Perturbations in the two-laser configuration}
+\label{sec:pert-two-laser}
+
+With definitions for $\mathbf{T}_{u}$ and $\mathbf{T}_{l}$ we can
+consider the effects of small pertubations from the ideal operators
+$\mathbf{T}_{u}^{*}$ and $\mathbf{T}_{l}^{*}$. Here, starting with the
+upper laser, since $\Delta\theta$ is already an expected perturbation
+from 0, we simply substitute $\phi = \phi^{*} + \delta\phi_{u}$ and
+use derivative linearization to approximate a linear form for it.
+\begin{align}
+  \mathbf{T}_{u}(\phi^{*}+\delta\phi) &\approx
+  \mathbf{T}_{u}(\phi^{*}) + \delta\phi
+  \mathbf{D}\{\mathbf{T}_{u}(\phi)\}|_{\phi = \phi^{*}} \\
+  &\approx
+  \left(
+    \begin{array}{cccc}
+      \delta\phi \cos\phi^{*}+\text{Sin}[\phi^{*} ] & 0 & 0 & 30 (\delta
+      \phi \cos\phi^{*} + \sin\phi^{*}) \\
+      -\cos\phi^{*} + \delta\phi \sin\phi^{*} & 1 & 0 & 30
+      (\cos\phi^{*} - \delta\phi \sin\phi^{*}) \\
+      0 & 0 & 1 & \Delta \theta  \\
+      0 & 0 & 0 & 1
+    \end{array}
+  \right)
+\end{align}
+
+which can be factored as in the single laser form into an ideal and
+perturbed forms
+\begin{align}
+  \mathbf{T}_{u}(\phi + \delta\phi) = \mathbf{P}_{u}(\phi, \delta\phi)\mathbf{T}_{u}^{*}(\phi)
+\end{align}
+
+where $\mathbf{T}_{u}^{*} = \mathbf{T}_{u}(\phi, \Delta\theta)$ and
+\begin{align}
+  \mathbf{P}_{u} = \left(
+    \begin{array}{cccc}
+      1 + \delta\phi \cot\phi & 0 & 0 & 0 \\
+      \delta\phi & 1 & 0 & -60 \delta\phi \sin\phi \\
+      0 & 0 & 1 & 0 \\
+      0 & 0 & 0 & 1 \\
+    \end{array}
+  \right)
+\end{align}
+
+which is conveniently the exact same for the lower laser
+$\mathbf{P}_{l} = \mathbf{P}_{u}$.
+
+\subsubsection{Swingup and swingdown}
+\label{sec:swingup-swingdown}
+
+The swingup matrix is the matrix which converts the lower laser
+coordinates to the upper laser coordinates. It's defined as
+\begin{align}
+  \mathbf{T}_{\uparrow} &= \mathbf{T}_{u}^{-1}\mathbf{T}_{l} \\
+  &= (\mathbf{P}_{u}\mathbf{T}_{u}^{*})^{-1}
+  (\mathbf{P}_{l}\mathbf{T}_{l}^{*}) \\
+  &= \mathbf{T}_{u}^{*, -1}\mathbf{P}_{u}^{-1}
+  (\mathbf{P}_{l}\mathbf{T}_{l}^{*}) \\
+\end{align}
+
+Which motivates the calculation of $\mathbf{P}_{\uparrow} =
+\mathbf{P}_{u}^{-1}\mathbf{P}_{l}$ as
+\begin{align}
+  \mathbf{P}_{\uparrow} = 
+  \left(
+  \begin{array}{cccc}
+    \frac{1 + \delta\phi_{l} \cot\phi}{1 + \delta\phi_{u} \cot\phi} &
+    0 & 0 & 0 \\
+    \frac{\delta\phi_{l} - \delta\phi_{u}}{1 + \delta\phi_{u}
+      \cot\phi} & 1 & 0 & 60
+    \left(\delta\phi_{u}-\delta\phi_{l}\right)\sin\phi \\
+    0 & 0 & 1 & 0 \\
+    0 & 0 & 0 & 1 \\
+  \end{array}
+  \right)
+\end{align}
+
+With the swingdown matrix $\mathbf{P}_{\downarrow}$ similarly defined
+being the obvious form,
+\begin{align}
+  \mathbf{P}_{\uparrow} = 
+  \left(
+  \begin{array}{cccc}
+    \frac{1 + \delta\phi_{u} \cot\phi}{1 + \delta\phi_{l} \cot\phi} &
+    0 & 0 & 0 \\
+    \frac{\delta\phi_{u} - \delta\phi_{l}}{1 + \delta\phi_{l}
+      \cot\phi} & 1 & 0 & 60
+    \left(\delta\phi_{l}-\delta\phi_{u}\right)\sin\phi \\
+    0 & 0 & 1 & 0 \\
+    0 & 0 & 0 & 1 \\
+  \end{array}
+  \right)
+\end{align}
+
+\subsection{Limitations}
+\label{sec:limitations}
+
+The above section suggests methods for formalizing the geometric
+properties of the two-laser system so that measurements from each
+laser can be interpreted in any space while dealing with small
+misalignment errors in a linear fashion. These concerns are necessary
+in the creation of estimation systems for those small misalignments
+(calibration systems) and also for the ``correction'' of measured data
+to a useful space. 
+
+\dd{The current approach is worrisome though in that it appears to
+  have fewer degrees of freedom than should be necessary. For
+  instance, if the distance between the lasers changes then the
+  transformation matrices do not take that translation into
+  account. It likely has to to do with the vanishing of the L term due
+  to the constraints in ideal geometry though I'm not clear how to fix
+  it at the moment. It is however much simpler at the moment and very
+  composable which is useful for further analysis.}
 
 %%% Local Variables: 
 %%% mode: latex
