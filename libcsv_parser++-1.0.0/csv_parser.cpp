@@ -355,6 +355,7 @@ void csv_parser::_get_fields_with_optional_enclosure(csv_row_ptr row, const char
 
 		memset(field, 0, *line_length);
 
+		register unsigned int current_state = 0U;
 		register unsigned int field_start   = 0U;
 		register unsigned int field_end     = 0U;
 		register unsigned int char_pos 		= 0U;
@@ -363,17 +364,73 @@ void csv_parser::_get_fields_with_optional_enclosure(csv_row_ptr row, const char
 		{
 			char curr_char = line[char_pos];
 
-			if (curr_char == field_term_char)
+			if (curr_char == enclosed_char)
 			{
-				field_end = char_pos;
+				current_state++;
 
-				const char * field_starts_at = line + field_start;
+				/* Lets find out if the enclosure character encountered is
+				 * a 'real' enclosure character or if it is an embedded character that
+				 * has been escaped within the field.
+				 */
+				register char previous_char = 0x00;
+
+				if (char_pos > 0U)
+				{
+					/* The escaped char will have to be the 2rd or later character. */
+					previous_char = line[char_pos - 1];
+
+					if (previous_char == escaped_char)
+					{
+						--current_state;
+					}
+				}
+
+				if (current_state == 1U && previous_char != escaped_char)
+				{
+					/* This marks the beginning of the column */
+					field_start = char_pos;
+
+				}			}
+			else if (curr_char == field_term_char && current_state != 1U)
+			  {
+			    if (current_state == 2U)
+			      {
+				/* We have found the end of the current field */
+				field_end = char_pos;
+			      
+				/* We do not need the enclosure characters */
+				const char * field_starts_at = line + field_start + 1U;
+			      
+				/* Field width must exclude beginning and ending enclosure characters */
+				const unsigned int field_width = field_end - field_start - 2U;
+			      
+				/* Copy exactly field_width bytes from field_starts_at to field */
+				memcpy(field, field_starts_at, field_width);
+			      
+				/* This must be a null-terminated character array */
+				field[field_width] = 0x00;
+			      
+				string field_string_obj = field;
+			      
+				row->push_back(field_string_obj);
+			      
+				/* This is the starting point of the next field */
+				field_start = char_pos + 1;
+			      
+				/* Reset the state to zero value for the next field */
+				current_state = 0U;
+			      }
+			    else if (current_state == 0U)
+			      {
+			    field_end = char_pos;
+
+			    const char * field_starts_at = line + field_start;
 
 				/* Field width must exclude field delimiter characters */
 				unsigned int field_width = field_end - field_start;
 
 				const char line_first_char = field_starts_at[0];
-				const char line_final_char = field_starts_at[field_width - 1];
+				const char line_final_char = field_starts_at[field_width > 0 ? field_width - 1 : 0];
 
 				/* If the enclosure char is found at either ends of the string */
 				unsigned int first_adjustment = (line_first_char == enclosed_char) ? 1U : 0U;
@@ -394,7 +451,7 @@ void csv_parser::_get_fields_with_optional_enclosure(csv_row_ptr row, const char
 
 				/* This is the starting point of the next field */
 				field_start = char_pos + 1;
-
+			      }
 			} else if (curr_char == line_term_char)
 			{
 				field_end = char_pos;
@@ -405,7 +462,7 @@ void csv_parser::_get_fields_with_optional_enclosure(csv_row_ptr row, const char
 				unsigned int field_width = field_end - field_start;
 
 				const char line_first_char = field_starts_at[0];
-				const char line_final_char = field_starts_at[field_width - 1];
+				const char line_final_char = field_starts_at[field_width > 0 ? field_width - 1 : 0];
 
 				/* If the enclosure char is found at either ends of the string */
 				unsigned int first_adjustment = (line_first_char == enclosed_char) ? 1U : 0U;
@@ -423,6 +480,9 @@ void csv_parser::_get_fields_with_optional_enclosure(csv_row_ptr row, const char
 				string field_string_obj = field;
 
 				row->push_back(field_string_obj);
+
+				/* Reset the state to zero value for the next field - not really needed*/
+				current_state = 0U;
 			}
 
 			/* Move to the next character in the current line */
